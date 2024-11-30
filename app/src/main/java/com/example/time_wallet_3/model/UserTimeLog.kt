@@ -1,5 +1,7 @@
 package com.example.time_wallet_3.model
 
+import kotlinx.coroutines.flow.MutableStateFlow
+
 data class UserTimeLog(
 //    val id: Int = 0, // Auto-generated ID
 //    val date: Long, // Date of time log
