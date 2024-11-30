@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,6 +35,8 @@ import androidx.navigation.compose.rememberNavController
 import com.example.time_wallet_3.model.UserTimeLog
 import com.example.time_wallet_3.ui.theme.Time_Wallet_3Theme
 import com.example.time_wallet_3.viewmodel.viewmodel_TimeLog
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 @RequiresApi(Build.VERSION_CODES.O)
 class MainActivity : ComponentActivity() {
@@ -61,40 +64,82 @@ fun AppNavigation(navController: NavHostController, sharedViewModel: viewmodel_T
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ViewLogsScreen(navController: NavHostController, viewModel: viewmodel_TimeLog) {
     val logs = viewModel.logs.collectAsState(initial = emptyList())
+
+    // Group logs by date
+    val groupedLogs = logs.value.groupBy { it.date }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text(text = "View Logs", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            text = "View Logs",
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        // Loop through grouped logs and create headers with logs under each header
+        groupedLogs.forEach { (date, logsForDate) ->
+            val dayOfWeek = LocalDate.parse(date).dayOfWeek.name // Get day of the week
 
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            items(logs.value) { log: UserTimeLog ->
-                Row(modifier = Modifier.padding(vertical = 4.dp)) {
-                    Text("Time: ${log.elapsedTime}s", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Activity: ${log.activity}", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Points: ${log.points}", style = MaterialTheme.typography.bodyMedium)
+            // Header with day and date
+            Text(
+                text = "$dayOfWeek, $date", // Display day and date
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            // Display logs under the header
+            LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                items(logsForDate) { log ->
+                    LogItem(log)
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = { navController.navigate("create_log") }) {
+        // Button to navigate to Create Log screen
+        Button(
+            onClick = { navController.navigate("create_log") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text("Create New Log")
         }
     }
 }
+
+@Composable
+fun LogItem(log: UserTimeLog) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Text(
+            text = "Time: ${log.elapsedTime}s",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = "Activity: ${log.activity}",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = "Points: ${log.points}",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+
 
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -138,7 +183,7 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel_TimeL
 
         Row {
             Button(
-                onClick = { viewModel.startTimer(System.currentTimeMillis()) },
+                onClick = { viewModel.startTimer() },
                 enabled = !isTimerRunning
             ) {
                 Text("Start Timer")
@@ -147,7 +192,7 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel_TimeL
             Spacer(modifier = Modifier.width(16.dp))
 
             Button(
-                onClick = { viewModel.stopTimer(System.currentTimeMillis()) },
+                onClick = { viewModel.stopTimer() },
                 enabled = isTimerRunning
             ) {
                 Text("Stop Timer")
@@ -158,126 +203,9 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel_TimeL
 
         Button(onClick = {
             viewModel.addLog(activity.value, note.value)
-            navController.navigate("view_logs") // Navigate back to View Logs screen
+            navController.navigate("view_logs")
         }) {
             Text("Save Log")
         }
     }
 }
-
-
-
-//@RequiresApi(Build.VERSION_CODES.O)
-//@Composable
-//fun MyApp(name: String, modifier: Modifier = Modifier) {
-//    val viewModel: viewmodel_TimeLog = viewModel()
-//
-//    // State to hold the list of logs
-//    var logs by remember { mutableStateOf(listOf<UserTimeLog>()) }
-//
-//    // Display UI
-//    TimeLogScreen(
-//        points = viewModel.points,
-//        activity = viewModel.activity,
-//        note = viewModel.note,
-//        timeElapsed = viewModel.timeElapsed, // Time elapsed in seconds
-//        logs = logs, // Pass the logs to the UI
-//        onTimerStart = {
-//            viewModel.updateStartTime(System.currentTimeMillis())
-//        },
-//        onTimerStop = {
-//            viewModel.updateEndTime(System.currentTimeMillis()) // Stop the timer
-//            logs = logs + UserTimeLog(
-//                elapsedTime = viewModel.timeElapsed, // Use the recalculated time
-//                activity = viewModel.activity,
-//                points = viewModel.points
-//            )
-//        },
-//        onNoteChange = { viewModel.updateNote(it) },
-//    )
-//}
-
-//@Composable
-//fun TimeLogScreen(
-//    points: Int,
-//    timeElapsed: MutableStateFlow<Long>,
-//    activity: String,
-//    note: String,
-//    logs: List<UserTimeLog>,
-//    onTimerStart: () -> Unit,
-//    onTimerStop: () -> Unit,
-//    onNoteChange: (String) -> Unit
-//) {
-//    var isTimerRunning by remember { mutableStateOf(false) }
-//
-//    Column(modifier = Modifier.padding(16.dp)) {
-//        Text(
-//            text = "Time Tracking App",
-//            style = MaterialTheme.typography.headlineSmall
-//        )
-//
-//        Spacer(modifier = Modifier.height(16.dp))
-//
-//        Text("Activity: $activity", style = MaterialTheme.typography.bodyLarge)
-//        Text("Points: $points", style = MaterialTheme.typography.bodyLarge)
-//
-//        Spacer(modifier = Modifier.height(16.dp))
-//
-//        Row {
-//            Button(onClick = {
-//                if (!isTimerRunning) {
-//                    onTimerStart()
-//                    isTimerRunning = true
-//                }
-//            }) {
-//                Text("Start Timer")
-//            }
-//
-//            Spacer(modifier = Modifier.width(16.dp))
-//
-//            Button(onClick = {
-//                if (isTimerRunning) {
-//                    onTimerStop()
-//                    isTimerRunning = false
-//                }
-//            }) {
-//                Text("Stop Timer")
-//            }
-//        }
-//
-//        Spacer(modifier = Modifier.height(16.dp))
-//
-//        TextField(
-//            value = note,
-//            onValueChange = { newNote -> onNoteChange(newNote) },
-//            label = { Text("Add Note") },
-//            modifier = Modifier.fillMaxWidth()
-//        )
-//
-//        Spacer(modifier = Modifier.height(16.dp))
-//
-//        Text("Elapsed Time: ${timeElapsed}s", style = MaterialTheme.typography.bodyLarge)
-//
-//        Spacer(modifier = Modifier.height(16.dp))
-//
-//        // Display logs in a scrollable LazyColumn
-//        Text("Session Logs:", style = MaterialTheme.typography.titleLarge)
-//        Spacer(modifier = Modifier.height(8.dp))
-//
-//        LazyColumn(
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .weight(1f) // Allow scrolling within available space
-//        ) {
-//            items(logs) { log ->
-//                Row(modifier = Modifier.padding(vertical = 4.dp)) {
-//                    Text("Time: ${log.elapsedTime}s", style = MaterialTheme.typography.bodyMedium)
-//                    Spacer(modifier = Modifier.width(8.dp))
-//                    Text("Activity: ${log.activity}", style = MaterialTheme.typography.bodyMedium)
-//                    Spacer(modifier = Modifier.width(8.dp))
-//                    Text("Points: ${log.points}", style = MaterialTheme.typography.bodyMedium)
-//                }
-//            }
-//        }
-//    }
-//}

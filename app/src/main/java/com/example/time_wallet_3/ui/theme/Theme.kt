@@ -33,6 +33,14 @@ private val LightColorScheme = lightColorScheme(
     */
 )
 
+private val CustomColorScheme = lightColorScheme(
+    primary = AppHotPink, // White for primary text
+    onPrimary = AppPaleGreen, // Grey for backgrounds
+    background = AppPaleGreen, // App background
+    surface = AppPaleGreen, // Surface backgrounds
+    onBackground = AppHotPink, // Text on grey background
+    onSurface = AppHotPink // Text on grey surface}
+)
 @Composable
 fun Time_Wallet_3Theme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -51,7 +59,7 @@ fun Time_Wallet_3Theme(
     }
 
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = CustomColorScheme,
         typography = Typography,
         content = content
     )

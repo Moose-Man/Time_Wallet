@@ -12,5 +12,6 @@ data class UserTimeLog(
 //    val Note: String // Additional notes taken by user of the session
     val elapsedTime: Long, // Total elapsed time in seconds
     val activity: String,  // Activity name
-    val points: Int        // Points earned
+    val points: Int,        // Points earned
+    val date: String      // Added date to represent the log date
 )
