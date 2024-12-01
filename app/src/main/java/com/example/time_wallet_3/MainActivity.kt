@@ -1,5 +1,6 @@
 package com.example.time_wallet_3
 
+import android.annotation.SuppressLint
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -35,6 +36,7 @@ import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.runtime.getValue
 
 @RequiresApi(Build.VERSION_CODES.O)
 class MainActivity : ComponentActivity() {
@@ -78,30 +80,42 @@ fun AppNavigation(navController: NavHostController, sharedViewModel: viewmodel_T
     }
 }
 
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ViewLogsScreen(navController: NavHostController, viewModel: viewmodel_TimeLog) {
     val logs = viewModel.logs.collectAsState(initial = emptyList())
     val groupedLogs = logs.value.groupBy { it.date }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { navController.navigate("create_log") },
+                modifier = Modifier
+                    //.align(Alignment.BottomEnd)
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "+",
+                    style = TextStyle(
+                        fontSize = 50.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            }
+        }
+    ) {innerPadding ->
+        // Apply Scaffold's innerPadding to the Column
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 64.dp) // Reserve space for the floating button
+                .padding(innerPadding) // Use innerPadding for proper layout
         ) {
-            Text(
-                text = "View Logs",
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
             LazyColumn(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .navigationBarsPadding() // Allow content to slide under the navigation bar
             ) {
                 groupedLogs.forEach { (date, logsForDate) ->
                     item {
@@ -114,21 +128,6 @@ fun ViewLogsScreen(navController: NavHostController, viewModel: viewmodel_TimeLo
             }
         }
 
-        FloatingActionButton(
-            onClick = { navController.navigate("create_log") },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "+",
-                style = TextStyle(
-                    fontSize = 50.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
-            )
-        }
     }
 }
 
@@ -161,7 +160,7 @@ fun DateHeaderCard(date: String) {
             .wrapContentSize()
             .padding(vertical = 8.dp),
         elevation = CardDefaults.cardElevation(8.dp),
-        shape = RoundedCornerShape(8.dp)
+        shape = RoundedCornerShape(0.dp) // no rounding
     ) {
         Row(
             modifier = Modifier
@@ -181,7 +180,7 @@ fun LogItem(log: UserTimeLog) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
+            .padding(vertical = 8.dp, horizontal = 5.dp)
     ) {
         Text(
             text = "Time: ${log.elapsedTime}s",
@@ -206,6 +205,8 @@ fun LogItem(log: UserTimeLog) {
 fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel_TimeLog) {
     val activity = remember { mutableStateOf("") }
     val note = remember { mutableStateOf("") }
+    val timeElapsed by viewModel.timeElapsed.collectAsState()
+    val isTimerRunning by viewModel.isTimerRunning.collectAsState()
     val customDate = remember { mutableStateOf("") }
 
     Column(
@@ -213,8 +214,6 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel_TimeL
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text("Create New Log", style = MaterialTheme.typography.headlineSmall)
-
         Spacer(modifier = Modifier.height(16.dp))
 
         TextField(
@@ -241,6 +240,27 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel_TimeL
             label = { Text("Custom Date (yyyy-MM-dd)") },
             modifier = Modifier.fillMaxWidth()
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Elapsed Time: ${timeElapsed}s", style = MaterialTheme.typography.bodyLarge)
+        Spacer(modifier = Modifier.height(16.dp))
+        Row {
+            Button(
+                onClick = { viewModel.startTimer() },
+                enabled = !isTimerRunning
+            ) {
+                Text("Start Timer")
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = { viewModel.stopTimer() },
+                enabled = isTimerRunning
+            ) {
+                Text("Stop Timer")
+            }
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
