@@ -5,15 +5,18 @@ import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.time_wallet_3.model.UserTimeLog
+import com.example.time_wallet_3.model.UserTimeLogDao
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-class viewmodel_TimeLog : ViewModel() {
+class viewmodel_TimeLog(private val dao: UserTimeLogDao) : ViewModel() {
+
     private var simulatedDate: LocalDate? = null // For testing purposes
     @RequiresApi(Build.VERSION_CODES.O)
     private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -22,8 +25,7 @@ class viewmodel_TimeLog : ViewModel() {
     val timeElapsed = MutableStateFlow(0L) // Elapsed time in seconds
     val isTimerRunning = MutableStateFlow(false) // Timer running state
 
-    private val _logs = MutableStateFlow<List<UserTimeLog>>(emptyList())
-    val logs: StateFlow<List<UserTimeLog>> get() = _logs
+    val logs: Flow<List<UserTimeLog>> = dao.getAllLogs()
 
     /**
      * Starts the timer and updates elapsed time in real-time.
@@ -67,6 +69,7 @@ class viewmodel_TimeLog : ViewModel() {
     /**
      * Adds a new log and resets the timer state.
      */
+
     @RequiresApi(Build.VERSION_CODES.O)
     fun addLog(activity: String, note: String) {
         val currentDate = getCurrentDate().format(formatter)
@@ -76,7 +79,9 @@ class viewmodel_TimeLog : ViewModel() {
             points = calculatePoints(timeElapsed.value),
             date = currentDate
         )
-        _logs.value = _logs.value + newLog
+        viewModelScope.launch {
+            dao.insertLog(newLog)
+        }
         resetTimerState()
     }
 

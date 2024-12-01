@@ -37,15 +37,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.ViewModelProvider
+import com.example.time_wallet_3.model.DatabaseInstance
+import com.example.time_wallet_3.viewmodel.ViewModelFactory
 
 @RequiresApi(Build.VERSION_CODES.O)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val dao = DatabaseInstance.getDatabase(application).userTimeLogDao()
+        val viewModelFactory = ViewModelFactory(dao)
+        val sharedViewModel: viewmodel_TimeLog = ViewModelProvider(this, viewModelFactory)[viewmodel_TimeLog::class.java]
+
         setContent {
             Time_Wallet_3Theme {
                 val navController = rememberNavController()
-                val sharedViewModel: viewmodel_TimeLog = viewModel() // Shared ViewModel instance
                 AppWithBottomNavigation(navController, sharedViewModel)
             }
         }
