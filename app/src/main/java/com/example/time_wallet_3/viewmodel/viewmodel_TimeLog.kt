@@ -14,7 +14,9 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 class viewmodel_TimeLog : ViewModel() {
-
+    private var simulatedDate: LocalDate? = null // For testing purposes
+    @RequiresApi(Build.VERSION_CODES.O)
+    private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     private var startTime: Long = 0L
     private var timerJob: Job? = null // Job to manage the timer coroutine
     val timeElapsed = MutableStateFlow(0L) // Elapsed time in seconds
@@ -50,12 +52,24 @@ class viewmodel_TimeLog : ViewModel() {
         }
     }
 
+    // Simulate a specific date (for testing purposes)
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun setSimulatedDate(date: String) {
+        simulatedDate = LocalDate.parse(date, formatter)
+    }
+
+    // Get the current date (real or simulated)
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun getCurrentDate(): LocalDate {
+        return simulatedDate ?: LocalDate.now()
+    }
+
     /**
      * Adds a new log and resets the timer state.
      */
     @RequiresApi(Build.VERSION_CODES.O)
     fun addLog(activity: String, note: String) {
-        val currentDate = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+        val currentDate = getCurrentDate().format(formatter)
         val newLog = UserTimeLog(
             elapsedTime = timeElapsed.value,
             activity = activity,

@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -12,11 +13,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -37,6 +43,8 @@ import com.example.time_wallet_3.ui.theme.Time_Wallet_3Theme
 import com.example.time_wallet_3.viewmodel.viewmodel_TimeLog
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import androidx.compose.ui.Alignment
+
 
 @RequiresApi(Build.VERSION_CODES.O)
 class MainActivity : ComponentActivity() {
@@ -72,44 +80,80 @@ fun ViewLogsScreen(navController: NavHostController, viewModel: viewmodel_TimeLo
     // Group logs by date
     val groupedLogs = logs.value.groupBy { it.date }
 
-    Column(
+    // Use Box to overlay the button at the bottom of the screen
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text(
-            text = "View Logs",
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        // Loop through grouped logs and create headers with logs under each header
-        groupedLogs.forEach { (date, logsForDate) ->
-            val dayOfWeek = LocalDate.parse(date).dayOfWeek.name // Get day of the week
-
-            // Header with day and date
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = 64.dp) // Reserve space for the button
+        ) {
             Text(
-                text = "$dayOfWeek, $date", // Display day and date
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(bottom = 8.dp)
+                text = "View Logs",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            // Display logs under the header
-            LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                items(logsForDate) { log ->
-                    LogItem(log)
+            LazyColumn(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                groupedLogs.forEach { (date, logsForDate) ->
+                    // Header for each date
+                    item {
+                        DateHeaderCard(date)
+                    }
+
+                    // Logs under each header
+                    items(logsForDate) { log ->
+                        LogItem(log)
+                    }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Button to navigate to Create Log screen
+        // Button at the bottom of the screen
         Button(
             onClick = { navController.navigate("create_log") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
         ) {
             Text("Create New Log")
+        }
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun DateHeaderCard(date: String) {
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    val dayOfWeek = LocalDate.parse(date, formatter).dayOfWeek.name.capitalize() // Get day of the week
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Card(
+            modifier = Modifier
+                //.align(Alignment.CenterHorizontally) // cant get the card
+                .wrapContentSize(), // Slightly narrower than full width
+            elevation = CardDefaults.cardElevation(8.dp),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp) // Padding inside the card
+            ) {
+                Text(
+                    text = "$dayOfWeek, $date",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
         }
     }
 }
@@ -139,16 +183,12 @@ fun LogItem(log: UserTimeLog) {
     }
 }
 
-
-
-
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel_TimeLog) {
     val activity = remember { mutableStateOf("") }
     val note = remember { mutableStateOf("") }
-    val timeElapsed by viewModel.timeElapsed.collectAsState()
-    val isTimerRunning by viewModel.isTimerRunning.collectAsState()
+    val customDate = remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -175,33 +215,22 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel_TimeL
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        Text("Elapsed Time: ${timeElapsed}s", style = MaterialTheme.typography.bodyLarge)
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row {
-            Button(
-                onClick = { viewModel.startTimer() },
-                enabled = !isTimerRunning
-            ) {
-                Text("Start Timer")
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Button(
-                onClick = { viewModel.stopTimer() },
-                enabled = isTimerRunning
-            ) {
-                Text("Stop Timer")
-            }
-        }
+        // Field for custom date
+        TextField(
+            value = customDate.value,
+            onValueChange = { customDate.value = it },
+            label = { Text("Custom Date (yyyy-MM-dd)") },
+            modifier = Modifier.fillMaxWidth()
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(onClick = {
+            if (customDate.value.isNotEmpty()) {
+                viewModel.setSimulatedDate(customDate.value)
+            }
             viewModel.addLog(activity.value, note.value)
             navController.navigate("view_logs")
         }) {
