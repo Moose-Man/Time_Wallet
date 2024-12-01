@@ -5,15 +5,17 @@ import androidx.room.Room
 
 object DatabaseInstance {
     @Volatile
-    private var INSTANCE: TimeLogDatabase? = null
+    private var INSTANCE: AppDatabase? = null
 
-    fun getDatabase(context: Context): TimeLogDatabase {
+    fun getDatabase(context: Context): AppDatabase {
         return INSTANCE ?: synchronized(this) {
             val instance = Room.databaseBuilder(
                 context.applicationContext,
-                TimeLogDatabase::class.java,
-                "time_log_database"
-            ).build()
+                AppDatabase::class.java,
+                "app_database" // Ensure a single database name
+            )
+                .fallbackToDestructiveMigration() // Enable destructive migration
+                .build()
             INSTANCE = instance
             instance
         }

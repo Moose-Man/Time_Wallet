@@ -4,19 +4,21 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.time_wallet_3.model.UserActivity
+import com.example.time_wallet_3.model.UserActivityDao
 import com.example.time_wallet_3.model.UserTimeLog
 import com.example.time_wallet_3.model.UserTimeLogDao
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-class viewmodel_TimeLog(private val dao: UserTimeLogDao) : ViewModel() {
+class viewmodel(private val dao: UserTimeLogDao, private val UserActivityDao: UserActivityDao) : ViewModel() {
 
+    val activities: Flow<List<UserActivity>> = UserActivityDao.getAllActivities()
     private var simulatedDate: LocalDate? = null // For testing purposes
     @RequiresApi(Build.VERSION_CODES.O)
     private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -51,6 +53,18 @@ class viewmodel_TimeLog(private val dao: UserTimeLogDao) : ViewModel() {
             isTimerRunning.value = false
             timerJob?.cancel() // Cancel the timer coroutine
             timeElapsed.value = (System.currentTimeMillis() - startTime) / 1000
+        }
+    }
+
+    fun addActivity(name: String) {
+        viewModelScope.launch {
+            UserActivityDao.insertActivity(UserActivity(name = name))
+        }
+    }
+
+    fun deleteActivity(activity: UserActivity) {
+        viewModelScope.launch {
+            UserActivityDao.deleteActivity(activity)
         }
     }
 

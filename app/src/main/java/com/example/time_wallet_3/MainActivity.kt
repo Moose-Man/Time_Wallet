@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,14 +22,13 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.time_wallet_3.model.UserTimeLog
 import com.example.time_wallet_3.ui.theme.Time_Wallet_3Theme
-import com.example.time_wallet_3.viewmodel.viewmodel_TimeLog
+import com.example.time_wallet_3.viewmodel.viewmodel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import androidx.compose.material.BottomNavigation
@@ -36,7 +36,17 @@ import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.toSize
 import androidx.lifecycle.ViewModelProvider
 import com.example.time_wallet_3.model.DatabaseInstance
 import com.example.time_wallet_3.viewmodel.ViewModelFactory
@@ -46,9 +56,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val dao = DatabaseInstance.getDatabase(application).userTimeLogDao()
-        val viewModelFactory = ViewModelFactory(dao)
-        val sharedViewModel: viewmodel_TimeLog = ViewModelProvider(this, viewModelFactory)[viewmodel_TimeLog::class.java]
+        // Use the unified database instance
+        val database = DatabaseInstance.getDatabase(application)
+        val timeLogDao = database.userTimeLogDao()
+        val activitiesDao = database.userActivityDao()
+
+        val viewModelFactory = ViewModelFactory(timeLogDao, activitiesDao)
+        val sharedViewModel: viewmodel = ViewModelProvider(this, viewModelFactory)[viewmodel::class.java]
 
         setContent {
             Time_Wallet_3Theme {
@@ -59,9 +73,10 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun AppWithBottomNavigation(navController: NavHostController, sharedViewModel: viewmodel_TimeLog) {
+fun AppWithBottomNavigation(navController: NavHostController, sharedViewModel: viewmodel) {
     Scaffold(
         bottomBar = { BottomNavigationBar(navController) }
     ) { innerPadding ->
@@ -77,7 +92,7 @@ fun AppWithBottomNavigation(navController: NavHostController, sharedViewModel: v
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun AppNavigation(navController: NavHostController, sharedViewModel: viewmodel_TimeLog) {
+fun AppNavigation(navController: NavHostController, sharedViewModel: viewmodel) {
     NavHost(
         navController = navController,
         startDestination = "view_logs"
@@ -90,7 +105,7 @@ fun AppNavigation(navController: NavHostController, sharedViewModel: viewmodel_T
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun ViewLogsScreen(navController: NavHostController, viewModel: viewmodel_TimeLog) {
+fun ViewLogsScreen(navController: NavHostController, viewModel: viewmodel) {
     val logs = viewModel.logs.collectAsState(initial = emptyList())
     val groupedLogs = logs.value.groupBy { it.date }
 
@@ -98,9 +113,7 @@ fun ViewLogsScreen(navController: NavHostController, viewModel: viewmodel_TimeLo
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { navController.navigate("create_log") },
-                modifier = Modifier
-                    //.align(Alignment.BottomEnd)
-                    .padding(16.dp)
+                modifier = Modifier.padding(16.dp)
             ) {
                 Text(
                     text = "+",
@@ -112,13 +125,16 @@ fun ViewLogsScreen(navController: NavHostController, viewModel: viewmodel_TimeLo
                 )
             }
         }
-    ) {innerPadding ->
-        // Apply Scaffold's innerPadding to the Column
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding) // Use innerPadding for proper layout
+                .padding(innerPadding) // Adjust for Scaffold's padding
         ) {
+            // Header Section
+            HeaderSection()
+
+            // LazyColumn for Logs
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -134,9 +150,41 @@ fun ViewLogsScreen(navController: NavHostController, viewModel: viewmodel_TimeLo
                 }
             }
         }
-
     }
 }
+
+@Composable
+fun HeaderSection() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp), // Padding around the header
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Points Badge
+        Card(
+            shape = RoundedCornerShape(50),
+            modifier = Modifier.wrapContentSize()
+        ) {
+            Text(
+                text = "240 points", // Replace with dynamic value if needed
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+        }
+
+        // Filter Icon
+        IconButton(onClick = { /* Add action for filtering */ }) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = "Settings",
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
 
 @Composable
 fun BottomNavigationBar(navController: NavHostController) {
@@ -209,29 +257,113 @@ fun LogItem(log: UserTimeLog) {
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel_TimeLog) {
-    val activity = remember { mutableStateOf("") }
+fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel) {
     val note = remember { mutableStateOf("") }
+    val customDate = remember { mutableStateOf("") }
+    val newActivity = remember { mutableStateOf("") }
     val timeElapsed by viewModel.timeElapsed.collectAsState()
     val isTimerRunning by viewModel.isTimerRunning.collectAsState()
-    val customDate = remember { mutableStateOf("") }
+    // Fetch activities from the database
+    val activities by viewModel.activities.collectAsState(initial = emptyList()) // Observes database changes
+    val mExpanded = remember { mutableStateOf(false) }
+    val mSelectedText = remember { mutableStateOf("") }
+    val mTextFieldSize = remember { mutableStateOf(Size.Zero) }
+
+    // Up Icon when expanded and down icon when collapsed
+    val icon = if (mExpanded.value)
+        Icons.Filled.KeyboardArrowUp
+    else
+        Icons.Filled.KeyboardArrowDown
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
+        Text("Create New Log", style = MaterialTheme.typography.headlineSmall)
+
         Spacer(modifier = Modifier.height(16.dp))
 
-        TextField(
-            value = activity.value,
-            onValueChange = { activity.value = it },
-            label = { Text("Activity Name") },
+        // Dropdown for Activity Selection
+        Box(modifier = Modifier.fillMaxWidth()) {
+            OutlinedTextField(
+                value = mSelectedText.value,
+                onValueChange = { /* No direct input */ },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onGloballyPositioned { coordinates ->
+                        mTextFieldSize.value = coordinates.size.toSize()
+                    },
+                label = { Text("Activity") },
+                trailingIcon = {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        Modifier.clickable { mExpanded.value = !mExpanded.value }
+                    )
+                },
+                readOnly = true // Prevent manual input
+            )
+
+            DropdownMenu(
+                expanded = mExpanded.value,
+                onDismissRequest = { mExpanded.value = false },
+                modifier = Modifier.width(with(LocalDensity.current) { mTextFieldSize.value.width.toDp() })
+            ) {
+                activities.forEach { activity ->
+                    DropdownMenuItem(
+                        onClick = {
+                            mSelectedText.value = activity.name // Update selected activity
+                            mExpanded.value = false // Close dropdown
+                        },
+                        text = {
+                            Row(
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(text = activity.name)
+                                IconButton(
+                                    onClick = {
+                                        viewModel.deleteActivity(activity) // Interact with the database
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete Activity",
+                                        tint = Color.Red
+                                    )
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Input for Adding New Activity
+        OutlinedTextField(
+            value = newActivity.value,
+            onValueChange = { newActivity.value = it },
+            label = { Text("New Activity") },
             modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        Button(onClick = {
+            if (newActivity.value.isNotBlank()) {
+                viewModel.addActivity(newActivity.value.trim()) // Add activity to the database
+                newActivity.value = "" // Clear input field
+            }
+        }) {
+            Text("Add Activity")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Notes TextField
         TextField(
             value = note.value,
             onValueChange = { note.value = it },
@@ -241,6 +373,7 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel_TimeL
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // Custom Date Field
         TextField(
             value = customDate.value,
             onValueChange = { customDate.value = it },
@@ -271,14 +404,17 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel_TimeL
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Save Log Button
         Button(onClick = {
             if (customDate.value.isNotEmpty()) {
                 viewModel.setSimulatedDate(customDate.value)
             }
-            viewModel.addLog(activity.value, note.value)
+            viewModel.addLog(mSelectedText.value, note.value) // Use selected activity
             navController.navigate("view_logs")
         }) {
             Text("Save Log")
         }
     }
 }
+
+
