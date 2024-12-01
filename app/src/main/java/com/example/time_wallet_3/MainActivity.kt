@@ -5,34 +5,21 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -43,8 +30,11 @@ import com.example.time_wallet_3.ui.theme.Time_Wallet_3Theme
 import com.example.time_wallet_3.viewmodel.viewmodel_TimeLog
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import androidx.compose.ui.Alignment
-
+import androidx.compose.material.BottomNavigation
+import androidx.compose.material.BottomNavigationItem
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Add
 
 @RequiresApi(Build.VERSION_CODES.O)
 class MainActivity : ComponentActivity() {
@@ -54,8 +44,24 @@ class MainActivity : ComponentActivity() {
             Time_Wallet_3Theme {
                 val navController = rememberNavController()
                 val sharedViewModel: viewmodel_TimeLog = viewModel() // Shared ViewModel instance
-                AppNavigation(navController, sharedViewModel)
+                AppWithBottomNavigation(navController, sharedViewModel)
             }
+        }
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun AppWithBottomNavigation(navController: NavHostController, sharedViewModel: viewmodel_TimeLog) {
+    Scaffold(
+        bottomBar = { BottomNavigationBar(navController) }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            AppNavigation(navController, sharedViewModel)
         }
     }
 }
@@ -76,11 +82,8 @@ fun AppNavigation(navController: NavHostController, sharedViewModel: viewmodel_T
 @Composable
 fun ViewLogsScreen(navController: NavHostController, viewModel: viewmodel_TimeLog) {
     val logs = viewModel.logs.collectAsState(initial = emptyList())
-
-    // Group logs by date
     val groupedLogs = logs.value.groupBy { it.date }
 
-    // Use Box to overlay the button at the bottom of the screen
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -89,7 +92,7 @@ fun ViewLogsScreen(navController: NavHostController, viewModel: viewmodel_TimeLo
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 64.dp) // Reserve space for the button
+                .padding(bottom = 64.dp) // Reserve space for the floating button
         ) {
             Text(
                 text = "View Logs",
@@ -101,12 +104,9 @@ fun ViewLogsScreen(navController: NavHostController, viewModel: viewmodel_TimeLo
                 modifier = Modifier.fillMaxSize()
             ) {
                 groupedLogs.forEach { (date, logsForDate) ->
-                    // Header for each date
                     item {
                         DateHeaderCard(date)
                     }
-
-                    // Logs under each header
                     items(logsForDate) { log ->
                         LogItem(log)
                     }
@@ -114,15 +114,39 @@ fun ViewLogsScreen(navController: NavHostController, viewModel: viewmodel_TimeLo
             }
         }
 
-        // Button at the bottom of the screen
-        Button(
+        FloatingActionButton(
             onClick = { navController.navigate("create_log") },
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
         ) {
-            Text("Create New Log")
+            Text(
+                text = "+",
+                style = TextStyle(
+                    fontSize = 50.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            )
         }
+    }
+}
+
+@Composable
+fun BottomNavigationBar(navController: NavHostController) {
+    BottomNavigation {
+        BottomNavigationItem(
+            selected = false, // Replace with logic to check the current screen
+            onClick = { navController.navigate("view_logs") },
+            icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Logs") },
+            label = { Text("Logs") }
+        )
+        BottomNavigationItem(
+            selected = false, // Replace with logic to check the current screen
+            onClick = { navController.navigate("create_log") },
+            icon = { Icon(Icons.Default.Add, contentDescription = "Create") },
+            label = { Text("Create") }
+        )
     }
 }
 
@@ -130,30 +154,24 @@ fun ViewLogsScreen(navController: NavHostController, viewModel: viewmodel_TimeLo
 @Composable
 fun DateHeaderCard(date: String) {
     val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-    val dayOfWeek = LocalDate.parse(date, formatter).dayOfWeek.name.capitalize() // Get day of the week
+    val dayOfWeek = LocalDate.parse(date, formatter).dayOfWeek.name.capitalize()
 
-    Box(
+    Card(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
+            .wrapContentSize()
+            .padding(vertical = 8.dp),
+        elevation = CardDefaults.cardElevation(8.dp),
+        shape = RoundedCornerShape(8.dp)
     ) {
-        Card(
+        Row(
             modifier = Modifier
-                //.align(Alignment.CenterHorizontally) // cant get the card
-                .wrapContentSize(), // Slightly narrower than full width
-            elevation = CardDefaults.cardElevation(8.dp),
-            shape = RoundedCornerShape(8.dp)
+                .fillMaxWidth()
+                .padding(16.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp) // Padding inside the card
-            ) {
-                Text(
-                    text = "$dayOfWeek, $date",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            }
+            Text(
+                text = "$dayOfWeek, $date",
+                style = MaterialTheme.typography.bodyLarge
+            )
         }
     }
 }
@@ -217,7 +235,6 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel_TimeL
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Field for custom date
         TextField(
             value = customDate.value,
             onValueChange = { customDate.value = it },
