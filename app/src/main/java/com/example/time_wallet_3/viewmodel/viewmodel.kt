@@ -33,18 +33,33 @@ class viewmodel(private val dao: UserTimeLogDao, private val UserActivityDao: Us
     /**
      * Starts the timer and updates elapsed time in real-time.
      */
-    fun startTimer() {
+//    fun startTimer() {
+//        if (!isTimerRunning.value) {
+//            startTime = System.currentTimeMillis()
+//            isTimerRunning.value = true
+//            timerJob = viewModelScope.launch {
+//                while (isTimerRunning.value) {
+//                    timeElapsed.value = (System.currentTimeMillis() - startTime) / 1000
+//                    delay(1000) // Update every second
+//                }
+//            }
+//        }
+//    }
+
+    fun startTimer(simulatedSpeed: Int = 10) {
         if (!isTimerRunning.value) {
             startTime = System.currentTimeMillis()
             isTimerRunning.value = true
             timerJob = viewModelScope.launch {
                 while (isTimerRunning.value) {
-                    timeElapsed.value = (System.currentTimeMillis() - startTime) / 1000
-                    delay(1000) // Update every second
+                    // Simulate faster time increment
+                    timeElapsed.value += simulatedSpeed
+                    delay(1000L / simulatedSpeed) // Adjust delay for faster updates
                 }
             }
         }
     }
+
 
     /**
      * Stops the timer and finalizes elapsed time.
@@ -72,6 +87,16 @@ class viewmodel(private val dao: UserTimeLogDao, private val UserActivityDao: Us
         viewModelScope.launch {
             UserActivityDao.deleteActivity(activity)
         }
+    }
+
+    fun deleteLog(log: UserTimeLog) {
+        viewModelScope.launch {
+            dao.deleteLog(log)
+        }
+    }
+
+    fun getLogById(logId: Int): Flow<UserTimeLog?> {
+        return dao.getLogById(logId)
     }
 
     // Simulate a specific date (for testing purposes)

@@ -1,6 +1,7 @@
 package com.example.time_wallet_3.model
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
@@ -16,4 +17,10 @@ interface UserTimeLogDao {
 
     @Query("DELETE FROM user_time_logs")
     suspend fun deleteAllLogs()
+
+    @Query("SELECT * FROM user_time_logs WHERE id = :logId")
+    fun getLogById(logId: Int): Flow<UserTimeLog?>
+
+    @Delete
+    suspend fun deleteLog(log: UserTimeLog)
 }

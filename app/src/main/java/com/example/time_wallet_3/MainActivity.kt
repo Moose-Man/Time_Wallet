@@ -1,5 +1,6 @@
 package com.example.time_wallet_3
 
+import android.annotation.SuppressLint
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -43,6 +44,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModelProvider
 import com.example.time_wallet_3.model.DatabaseInstance
@@ -281,34 +283,56 @@ fun LogItem(log: UserTimeLog, navController: NavHostController) {
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun LogInspectionScreen(navController: NavHostController, viewModel: viewmodel, logId: Int) {
-    // Fetch the specific log
-    val log = viewModel.logs.collectAsState(initial = emptyList()).value.firstOrNull { it.id == logId }
+    val log = viewModel.getLogById(logId).collectAsState(initial = null).value
 
-    if (log != null) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp) // Padding for the content
+                .padding(bottom = 64.dp) // Reserve space for the delete button
         ) {
-            Text(text = "Log Details", style = MaterialTheme.typography.headlineSmall)
-            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Log Details",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
 
-            // Display log details
-            Text(text = "Activity: ${log.activity}", style = MaterialTheme.typography.bodyLarge)
-            Text(text = "Started: ${formatTime(log.timeStarted)}", style = MaterialTheme.typography.bodyLarge)
-            Text(text = "Stopped: ${formatTime(log.timeStopped)}", style = MaterialTheme.typography.bodyLarge)
-            Text(text = "Elapsed Time: ${log.elapsedTime}s", style = MaterialTheme.typography.bodyLarge)
-            Text(text = "Notes: ${log.notes}", style = MaterialTheme.typography.bodyLarge)
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Back button
-            Button(onClick = { navController.popBackStack() }) {
-                Text("Back to Logs")
+            if (log != null) {
+                Text("Activity: ${log.activity}", style = MaterialTheme.typography.bodyLarge)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Elapsed Time: ${log.elapsedTime}", style = MaterialTheme.typography.bodyLarge)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Notes: ${log.notes}", style = MaterialTheme.typography.bodyLarge)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Start Time: ${formatTime(log.timeStarted)}", style = MaterialTheme.typography.bodyLarge)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("End Time: ${formatTime(log.timeStopped)}", style = MaterialTheme.typography.bodyLarge)
+            } else {
+                Text("Log not found.", style = MaterialTheme.typography.bodyLarge)
             }
+        }
+
+        // Delete Log Button
+        Button(
+            onClick = {
+                if (log != null) {
+                    viewModel.deleteLog(log) // Delete the log from the database
+                    navController.navigate("view_logs") // Navigate back to the logs screen
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+        ) {
+            Text("Delete Log")
         }
     }
 }
+
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -332,6 +356,13 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
+            // Title
+            Text(
+                text = "Log Time", // Title text
+                style = MaterialTheme.typography.headlineSmall, // Use an appropriate style
+                modifier = Modifier.padding(bottom = 16.dp) // Add spacing below the title
+            )
+
             // Notes TextField
             TextField(
                 value = note.value,
@@ -352,8 +383,13 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Elapsed time display
+            Text(
+                text = "Elapsed Time: ${formatElapsedTime(timeElapsed)}",
+                style = MaterialTheme.typography.bodyLarge
+            )
+
             // Start and Stop Timer Buttons
-            Text("Elapsed Time: ${timeElapsed}s", style = MaterialTheme.typography.bodyLarge)
             Spacer(modifier = Modifier.height(16.dp))
             Row {
                 Button(
@@ -476,24 +512,68 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel) {
     }
 }
 
+// Helper function to format elapsed time
+@SuppressLint("DefaultLocale")
+private fun formatElapsedTime(seconds: Long): String {
+    return when {
+        seconds >= 3600 -> {
+            val hours = seconds / 3600
+            val minutes = (seconds % 3600) / 60
+            String.format("%d hr %02d min", hours, minutes)
+        }
+        seconds >= 60 -> {
+            val minutes = seconds / 60
+            val remainingSeconds = seconds % 60
+            String.format("%d min %02d sec", minutes, remainingSeconds)
+        }
+        else -> {
+            String.format("%d sec", seconds)
+        }
+    }
+}
+
 @Composable
-fun AddActivityDialog (
+fun AddActivityDialog(
     newActivity: MutableState<String>,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    var errorMessage by remember { mutableStateOf<String?>(null) } // Track validation errors
+
     AlertDialog(
         onDismissRequest = { onDismiss() },
         title = { Text("Add New Activity") },
         text = {
-            TextField(
-                value = newActivity.value,
-                onValueChange = { newActivity.value = it },
-                label = { Text("Activity Name") }
-            )
+            Column {
+                TextField(
+                    value = newActivity.value,
+                    onValueChange = {
+                        newActivity.value = it
+                        errorMessage = null // Reset error message on input change
+                    },
+                    label = { Text("Activity Name") },
+                    isError = errorMessage != null // Highlight input field if there's an error
+                )
+                errorMessage?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
         },
         confirmButton = {
-            Button(onClick = onConfirm) {
+            Button(onClick = {
+                if (newActivity.value.isBlank()) {
+                    errorMessage = "Activity name cannot be empty."
+                } else if (newActivity.value.length > 20) {
+                    errorMessage = "Activity name cannot exceed 20 characters."
+                } else {
+                    onConfirm()
+                }
+            }) {
                 Text("Add")
             }
         },
@@ -517,33 +597,29 @@ fun DeleteActivityDialog(
         onDismissRequest = { onDismiss() },
         title = { Text("Delete Activities") },
         text = {
-            Column {
-                Text("Select activities to delete:")
-                Spacer(modifier = Modifier.height(8.dp))
-                LazyColumn {
-                    items(activities) { activity ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(8.dp)
-                                .clickable {
-                                    if (selectedActivities.contains(activity)) {
-                                        selectedActivities.remove(activity)
-                                    } else {
-                                        selectedActivities.add(activity)
-                                    }
-                                },
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(activity.name, style = MaterialTheme.typography.bodyMedium)
-                            Checkbox(
-                                checked = selectedActivities.contains(activity),
-                                onCheckedChange = {
-                                    if (it) selectedActivities.add(activity)
-                                    else selectedActivities.remove(activity)
+            LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) { // Limit height for scrolling
+                items(activities) { activity ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically, // Align checkbox and text vertically
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp, horizontal = 8.dp) // Add spacing between rows
+                    ) {
+                        Checkbox(
+                            checked = selectedActivities.contains(activity),
+                            onCheckedChange = { isChecked ->
+                                if (isChecked) {
+                                    selectedActivities.add(activity)
+                                } else {
+                                    selectedActivities.remove(activity)
                                 }
-                            )
-                        }
+                            }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp)) // Add spacing between checkbox and text
+                        Text(
+                            text = activity.name,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
                     }
                 }
             }
@@ -560,6 +636,8 @@ fun DeleteActivityDialog(
         }
     )
 }
+
+
 
 
 
