@@ -6,8 +6,11 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "user_time_logs")
 data class UserTimeLog(
     @PrimaryKey(autoGenerate = true) val id: Int = 0, // Primary key with auto-increment
-    val elapsedTime: Long, // Total elapsed time in seconds
-    val activity: String,  // Activity name
-    val points: Int,        // Points earned
-    val date: String      // Added date to represent the log date
+    val elapsedTime: Long,
+    val activity: String,
+    val points: Int,
+    val date: String,
+    val notes: String = "",
+    val timeStarted: Long = 0L,
+    val timeStopped: Long = 0L
 )

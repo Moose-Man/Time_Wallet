@@ -1,6 +1,5 @@
 package com.example.time_wallet_3.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -34,12 +33,12 @@ private val LightColorScheme = lightColorScheme(
 )
 
 private val CustomColorScheme = lightColorScheme(
-    primary = AppHotPink, // White for primary text
-    onPrimary = AppPaleGreen, // Grey for backgrounds
-    background = AppPaleGreen, // App background
-    surface = AppPaleGreen, // Surface backgrounds
-    onBackground = AppHotPink, // Text on grey background
-    onSurface = AppHotPink // Text on grey surface}
+    primary = AppHotPink,
+    onPrimary = AppPaleGreen,
+    background = AppPaleGreen,
+    surface = AppPaleGreen,
+    onBackground = AppHotPink,
+    onSurface = AppHotPink
 )
 @Composable
 fun Time_Wallet_3Theme(
@@ -48,15 +47,16 @@ fun Time_Wallet_3Theme(
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
 
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+//    val colorScheme = when {
+//        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+//            val context = LocalContext.current
+//            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+//        }
+//
+//        darkTheme -> DarkColorScheme
+//        else -> LightColorScheme
+//    }
 
     MaterialTheme(
         colorScheme = CustomColorScheme,

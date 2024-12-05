@@ -1,6 +1,5 @@
 package com.example.time_wallet_3
 
-import android.annotation.SuppressLint
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -9,6 +8,9 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -32,24 +34,23 @@ import com.example.time_wallet_3.viewmodel.viewmodel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import androidx.compose.material.BottomNavigation
+//noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.toSize
 import androidx.lifecycle.ViewModelProvider
 import com.example.time_wallet_3.model.DatabaseInstance
+import com.example.time_wallet_3.model.UserActivity
 import com.example.time_wallet_3.viewmodel.ViewModelFactory
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @RequiresApi(Build.VERSION_CODES.O)
 class MainActivity : ComponentActivity() {
@@ -99,10 +100,15 @@ fun AppNavigation(navController: NavHostController, sharedViewModel: viewmodel) 
     ) {
         composable("view_logs") { ViewLogsScreen(navController, sharedViewModel) }
         composable("create_log") { CreateLogScreen(navController, sharedViewModel) }
+        composable("log_inspection/{logId}") { backStackEntry ->
+            val logId = backStackEntry.arguments?.getString("logId")?.toIntOrNull()
+            if (logId != null) {
+                LogInspectionScreen(navController, sharedViewModel, logId)
+            }
+        }
     }
 }
 
-@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ViewLogsScreen(navController: NavHostController, viewModel: viewmodel) {
@@ -132,7 +138,7 @@ fun ViewLogsScreen(navController: NavHostController, viewModel: viewmodel) {
                 .padding(innerPadding) // Adjust for Scaffold's padding
         ) {
             // Header Section
-            HeaderSection()
+            HeaderSection(viewModel)
 
             // LazyColumn for Logs
             LazyColumn(
@@ -144,8 +150,9 @@ fun ViewLogsScreen(navController: NavHostController, viewModel: viewmodel) {
                     item {
                         DateHeaderCard(date)
                     }
-                    items(logsForDate) { log ->
-                        LogItem(log)
+                    val sortedLogsForDate = logsForDate.sortedBy { it.timeStopped }
+                    items(sortedLogsForDate) { log ->
+                        LogItem(log = log, navController = navController)
                     }
                 }
             }
@@ -154,7 +161,9 @@ fun ViewLogsScreen(navController: NavHostController, viewModel: viewmodel) {
 }
 
 @Composable
-fun HeaderSection() {
+fun HeaderSection(viewModel: viewmodel) {
+    val totalPoints = viewModel.totalPoints.collectAsState(initial = 0)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -168,7 +177,7 @@ fun HeaderSection() {
             modifier = Modifier.wrapContentSize()
         ) {
             Text(
-                text = "240 points", // Replace with dynamic value if needed
+                text = "${totalPoints.value} points", // Replace with dynamic value if needed
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
@@ -208,7 +217,11 @@ fun BottomNavigationBar(navController: NavHostController) {
 @Composable
 fun DateHeaderCard(date: String) {
     val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-    val dayOfWeek = LocalDate.parse(date, formatter).dayOfWeek.name.capitalize()
+    val dayOfWeek = LocalDate.parse(date, formatter).dayOfWeek.name.replaceFirstChar {
+        if (it.isLowerCase()) it.titlecase(
+            Locale.ROOT
+        ) else it.toString()
+    }
 
     Card(
         modifier = Modifier
@@ -230,28 +243,70 @@ fun DateHeaderCard(date: String) {
     }
 }
 
+fun formatTime(timestamp: Long): String {
+    val sdf = SimpleDateFormat("HH:mm", Locale.getDefault()) // e.g., 14:45
+    return sdf.format(Date(timestamp))
+}
+
 @Composable
-fun LogItem(log: UserTimeLog) {
+fun LogItem(log: UserTimeLog, navController: NavHostController) {
+    val customGreen = Color(0xFF4CAF50) // Replace with your desired color code
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp, horizontal = 5.dp)
+            .padding(vertical = 8.dp, horizontal = 6.dp)
+            .clickable {
+                navController.navigate("log_inspection/${log.id}") // Pass the log ID
+            }
     ) {
         Text(
-            text = "Time: ${log.elapsedTime}s",
+            text = log.activity,
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f)
         )
         Text(
-            text = "Activity: ${log.activity}",
+            text = "${formatTime(log.timeStarted)}-${formatTime(log.timeStopped)}",
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f)
         )
         Text(
-            text = "Points: ${log.points}",
+            text = "${log.points}",
             style = MaterialTheme.typography.bodyMedium,
+            color = customGreen,
             modifier = Modifier.weight(1f)
         )
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun LogInspectionScreen(navController: NavHostController, viewModel: viewmodel, logId: Int) {
+    // Fetch the specific log
+    val log = viewModel.logs.collectAsState(initial = emptyList()).value.firstOrNull { it.id == logId }
+
+    if (log != null) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp) // Padding for the content
+        ) {
+            Text(text = "Log Details", style = MaterialTheme.typography.headlineSmall)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Display log details
+            Text(text = "Activity: ${log.activity}", style = MaterialTheme.typography.bodyLarge)
+            Text(text = "Started: ${formatTime(log.timeStarted)}", style = MaterialTheme.typography.bodyLarge)
+            Text(text = "Stopped: ${formatTime(log.timeStopped)}", style = MaterialTheme.typography.bodyLarge)
+            Text(text = "Elapsed Time: ${log.elapsedTime}s", style = MaterialTheme.typography.bodyLarge)
+            Text(text = "Notes: ${log.notes}", style = MaterialTheme.typography.bodyLarge)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Back button
+            Button(onClick = { navController.popBackStack() }) {
+                Text("Back to Logs")
+            }
+        }
     }
 }
 
@@ -263,158 +318,248 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel) {
     val newActivity = remember { mutableStateOf("") }
     val timeElapsed by viewModel.timeElapsed.collectAsState()
     val isTimerRunning by viewModel.isTimerRunning.collectAsState()
+    val selectedActivity = remember { mutableStateOf("") }
+    val showAddActivityDialog = remember { mutableStateOf(false) }
+    val showDeleteDialog = remember { mutableStateOf(false) }
     // Fetch activities from the database
     val activities by viewModel.activities.collectAsState(initial = emptyList()) // Observes database changes
-    val mExpanded = remember { mutableStateOf(false) }
-    val mSelectedText = remember { mutableStateOf("") }
-    val mTextFieldSize = remember { mutableStateOf(Size.Zero) }
 
-    // Up Icon when expanded and down icon when collapsed
-    val icon = if (mExpanded.value)
-        Icons.Filled.KeyboardArrowUp
-    else
-        Icons.Filled.KeyboardArrowDown
-
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text("Create New Log", style = MaterialTheme.typography.headlineSmall)
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Dropdown for Activity Selection
-        Box(modifier = Modifier.fillMaxWidth()) {
-            OutlinedTextField(
-                value = mSelectedText.value,
-                onValueChange = { /* No direct input */ },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onGloballyPositioned { coordinates ->
-                        mTextFieldSize.value = coordinates.size.toSize()
-                    },
-                label = { Text("Activity") },
-                trailingIcon = {
-                    Icon(
-                        icon,
-                        contentDescription = null,
-                        Modifier.clickable { mExpanded.value = !mExpanded.value }
-                    )
-                },
-                readOnly = true // Prevent manual input
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Notes TextField
+            TextField(
+                value = note.value,
+                onValueChange = { note.value = it },
+                label = { Text("Notes") },
+                modifier = Modifier.fillMaxWidth()
             )
 
-            DropdownMenu(
-                expanded = mExpanded.value,
-                onDismissRequest = { mExpanded.value = false },
-                modifier = Modifier.width(with(LocalDensity.current) { mTextFieldSize.value.width.toDp() })
-            ) {
-                activities.forEach { activity ->
-                    DropdownMenuItem(
-                        onClick = {
-                            mSelectedText.value = activity.name // Update selected activity
-                            mExpanded.value = false // Close dropdown
-                        },
-                        text = {
-                            Row(
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(text = activity.name)
-                                IconButton(
-                                    onClick = {
-                                        viewModel.deleteActivity(activity) // Interact with the database
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Delete Activity",
-                                        tint = Color.Red
-                                    )
-                                }
-                            }
-                        }
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Input for Adding New Activity
-        OutlinedTextField(
-            value = newActivity.value,
-            onValueChange = { newActivity.value = it },
-            label = { Text("New Activity") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Button(onClick = {
-            if (newActivity.value.isNotBlank()) {
-                viewModel.addActivity(newActivity.value.trim()) // Add activity to the database
-                newActivity.value = "" // Clear input field
-            }
-        }) {
-            Text("Add Activity")
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Notes TextField
-        TextField(
-            value = note.value,
-            onValueChange = { note.value = it },
-            label = { Text("Notes") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Custom Date Field
-        TextField(
-            value = customDate.value,
-            onValueChange = { customDate.value = it },
-            label = { Text("Custom Date (yyyy-MM-dd)") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("Elapsed Time: ${timeElapsed}s", style = MaterialTheme.typography.bodyLarge)
-        Spacer(modifier = Modifier.height(16.dp))
-        Row {
-            Button(
-                onClick = { viewModel.startTimer() },
-                enabled = !isTimerRunning
-            ) {
-                Text("Start Timer")
-            }
-            Spacer(modifier = Modifier.width(16.dp))
             Spacer(modifier = Modifier.height(8.dp))
 
-            Button(
-                onClick = { viewModel.stopTimer() },
-                enabled = isTimerRunning
+            // Custom Date Field
+            TextField(
+                value = customDate.value,
+                onValueChange = { customDate.value = it },
+                label = { Text("Custom Date (yyyy-MM-dd)") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Start and Stop Timer Buttons
+            Text("Elapsed Time: ${timeElapsed}s", style = MaterialTheme.typography.bodyLarge)
+            Spacer(modifier = Modifier.height(16.dp))
+            Row {
+                Button(
+                    onClick = { viewModel.startTimer() },
+                    enabled = !isTimerRunning
+                ) {
+                    Text("Start Timer")
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Button(
+                    onClick = {
+                        viewModel.stopTimer()
+                        if (customDate.value.isNotEmpty()) {
+                            viewModel.setSimulatedDate(customDate.value)
+                        }
+                        viewModel.addLog(selectedActivity.value, note.value) // Use selected activity
+                        navController.navigate("view_logs")
+                    },
+                    enabled = isTimerRunning
+                ) {
+                    Text("Stop Timer")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Activity Grid Header
+            Text("Select Activity:", style = MaterialTheme.typography.bodyMedium)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // LazyVerticalGrid for Activities
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3), // Number of columns
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f), // Ensure the grid takes remaining space
+                contentPadding = PaddingValues(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("Stop Timer")
+                items(activities) { activity ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selectedActivity.value = activity.name },
+                        shape = RoundedCornerShape(0.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (selectedActivity.value == activity.name) Color.Green else Color.LightGray
+                        )
+                    ) {
+                        Text(
+                            text = activity.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+                // Add Activity Card
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showAddActivityDialog.value = true },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.Blue
+                        )
+                    ) {
+                        Text(
+                            text = "Add Activity",
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Add Activity Dialog
+            if (showAddActivityDialog.value) {
+                AddActivityDialog(
+                    newActivity = newActivity,
+                    onConfirm = {
+                        viewModel.addActivity(newActivity.value.trim())
+                        newActivity.value = ""
+                        showAddActivityDialog.value = false
+                    },
+                    onDismiss = {
+                        showAddActivityDialog.value = false
+                    }
+                )
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        // Delete Activity Button positioned in the bottom-right corner
+        Button(
+            onClick = { showDeleteDialog.value = true },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(8.dp)
+        ) {
+            Text("Delete Activity")
+        }
 
-        // Save Log Button
-        Button(onClick = {
-            if (customDate.value.isNotEmpty()) {
-                viewModel.setSimulatedDate(customDate.value)
-            }
-            viewModel.addLog(mSelectedText.value, note.value) // Use selected activity
-            navController.navigate("view_logs")
-        }) {
-            Text("Save Log")
+        // Show Delete Activity Dialog
+        if (showDeleteDialog.value) {
+            DeleteActivityDialog(
+                activities = activities,
+                onDelete = { selectedActivities ->
+                    selectedActivities.forEach { viewModel.deleteActivity(it) }
+                    showDeleteDialog.value = false
+                },
+                onDismiss = { showDeleteDialog.value = false }
+            )
         }
     }
 }
+
+@Composable
+fun AddActivityDialog (
+    newActivity: MutableState<String>,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { onDismiss() },
+        title = { Text("Add New Activity") },
+        text = {
+            TextField(
+                value = newActivity.value,
+                onValueChange = { newActivity.value = it },
+                label = { Text("Activity Name") }
+            )
+        },
+        confirmButton = {
+            Button(onClick = onConfirm) {
+                Text("Add")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun DeleteActivityDialog(
+    activities: List<UserActivity>,
+    onDelete: (List<UserActivity>) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val selectedActivities = remember { mutableStateListOf<UserActivity>() }
+
+    AlertDialog(
+        onDismissRequest = { onDismiss() },
+        title = { Text("Delete Activities") },
+        text = {
+            Column {
+                Text("Select activities to delete:")
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyColumn {
+                    items(activities) { activity ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp)
+                                .clickable {
+                                    if (selectedActivities.contains(activity)) {
+                                        selectedActivities.remove(activity)
+                                    } else {
+                                        selectedActivities.add(activity)
+                                    }
+                                },
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(activity.name, style = MaterialTheme.typography.bodyMedium)
+                            Checkbox(
+                                checked = selectedActivities.contains(activity),
+                                onCheckedChange = {
+                                    if (it) selectedActivities.add(activity)
+                                    else selectedActivities.remove(activity)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onDelete(selectedActivities) }) {
+                Text("Confirm")
+            }
+        },
+        dismissButton = {
+            Button(onClick = { onDismiss() }) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
 
 

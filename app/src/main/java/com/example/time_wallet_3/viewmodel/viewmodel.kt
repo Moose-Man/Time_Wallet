@@ -10,6 +10,7 @@ import com.example.time_wallet_3.model.UserTimeLog
 import com.example.time_wallet_3.model.UserTimeLogDao
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -56,6 +57,11 @@ class viewmodel(private val dao: UserTimeLogDao, private val UserActivityDao: Us
         }
     }
 
+    // Function to calculate total points
+    val totalPoints: Flow<Int> = logs.map { logs ->
+        logs.sumOf { it.points }
+    }
+
     fun addActivity(name: String) {
         viewModelScope.launch {
             UserActivityDao.insertActivity(UserActivity(name = name))
@@ -91,7 +97,10 @@ class viewmodel(private val dao: UserTimeLogDao, private val UserActivityDao: Us
             elapsedTime = timeElapsed.value,
             activity = activity,
             points = calculatePoints(timeElapsed.value),
-            date = currentDate
+            date = currentDate,
+            notes = note, // Adding the note field
+            timeStarted = startTime, // Adding the time started field
+            timeStopped = System.currentTimeMillis() // Adding the time stopped field
         )
         viewModelScope.launch {
             dao.insertLog(newLog)
