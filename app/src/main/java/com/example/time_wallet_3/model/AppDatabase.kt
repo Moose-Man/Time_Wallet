@@ -3,8 +3,8 @@ package com.example.time_wallet_3.model
 import androidx.room.Database
 import androidx.room.RoomDatabase
 
-@Database(entities = [UserTimeLog::class, UserActivity::class], version = 3, exportSchema = false)
+@Database(entities = [TimeLog::class, Activity::class], version = 4, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun userTimeLogDao(): UserTimeLogDao
-    abstract fun userActivityDao(): UserActivityDao
+    abstract fun userTimeLogDao(): TimeLogDao
+    abstract fun userActivityDao(): ActivityDao
 }

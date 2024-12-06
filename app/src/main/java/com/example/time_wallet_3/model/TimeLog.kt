@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "user_time_logs")
-data class UserTimeLog(
+data class TimeLog(
     @PrimaryKey(autoGenerate = true) val id: Int = 0, // Primary key with auto-increment
     val elapsedTime: Long,
     val activity: String,

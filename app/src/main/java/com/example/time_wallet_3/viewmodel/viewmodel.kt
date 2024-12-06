@@ -4,22 +4,26 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.time_wallet_3.model.UserActivity
-import com.example.time_wallet_3.model.UserActivityDao
-import com.example.time_wallet_3.model.UserTimeLog
-import com.example.time_wallet_3.model.UserTimeLogDao
+import com.example.time_wallet_3.model.Activity
+import com.example.time_wallet_3.model.ActivityDao
+import com.example.time_wallet_3.model.Budget
+import com.example.time_wallet_3.model.TimeLog
+import com.example.time_wallet_3.model.TimeLogDao
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-class viewmodel(private val dao: UserTimeLogDao, private val UserActivityDao: UserActivityDao) : ViewModel() {
+class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDao) : ViewModel() {
 
-    val activities: Flow<List<UserActivity>> = UserActivityDao.getAllActivities()
+    private val _budgets = MutableStateFlow<List<Budget>>(emptyList())
+    val budgets: StateFlow<List<Budget>> = _budgets
+    val activities: Flow<List<Activity>> = ActivityDao.getAllActivities()
     private var simulatedDate: LocalDate? = null // For testing purposes
     @RequiresApi(Build.VERSION_CODES.O)
     private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -28,7 +32,7 @@ class viewmodel(private val dao: UserTimeLogDao, private val UserActivityDao: Us
     val timeElapsed = MutableStateFlow(0L) // Elapsed time in seconds
     val isTimerRunning = MutableStateFlow(false) // Timer running state
 
-    val logs: Flow<List<UserTimeLog>> = dao.getAllLogs()
+    val logs: Flow<List<TimeLog>> = dao.getAllLogs()
 
     /**
      * Starts the timer and updates elapsed time in real-time.
@@ -45,6 +49,23 @@ class viewmodel(private val dao: UserTimeLogDao, private val UserActivityDao: Us
 //            }
 //        }
 //    }
+
+    fun saveBudgetLimits(limits: Map<String, Int>) {
+        viewModelScope.launch {
+            limits.forEach { (activityName, limit) ->
+                val activity = getActivityByName(activityName)
+                if (activity != null) {
+                    // Update the activity with the new limit
+                    activity.limit = limit
+                    ActivityDao.updateActivity(activity)
+                }
+            }
+        }
+    }
+
+    suspend fun getActivityByName(name: String): Activity? {
+        return ActivityDao.getActivityByName(name) // Add this function in your DAO
+    }
 
     fun startTimer(simulatedSpeed: Int = 10) {
         if (!isTimerRunning.value) {
@@ -79,23 +100,23 @@ class viewmodel(private val dao: UserTimeLogDao, private val UserActivityDao: Us
 
     fun addActivity(name: String) {
         viewModelScope.launch {
-            UserActivityDao.insertActivity(UserActivity(name = name))
+            ActivityDao.insertActivity(Activity(name = name))
         }
     }
 
-    fun deleteActivity(activity: UserActivity) {
+    fun deleteActivity(activity: Activity) {
         viewModelScope.launch {
-            UserActivityDao.deleteActivity(activity)
+            ActivityDao.deleteActivity(activity)
         }
     }
 
-    fun deleteLog(log: UserTimeLog) {
+    fun deleteLog(log: TimeLog) {
         viewModelScope.launch {
             dao.deleteLog(log)
         }
     }
 
-    fun getLogById(logId: Int): Flow<UserTimeLog?> {
+    fun getLogById(logId: Int): Flow<TimeLog?> {
         return dao.getLogById(logId)
     }
 
@@ -118,7 +139,7 @@ class viewmodel(private val dao: UserTimeLogDao, private val UserActivityDao: Us
     @RequiresApi(Build.VERSION_CODES.O)
     fun addLog(activity: String, note: String) {
         val currentDate = getCurrentDate().format(formatter)
-        val newLog = UserTimeLog(
+        val newLog = TimeLog(
             elapsedTime = timeElapsed.value,
             activity = activity,
             points = calculatePoints(timeElapsed.value),
@@ -149,4 +170,15 @@ class viewmodel(private val dao: UserTimeLogDao, private val UserActivityDao: Us
     private fun calculatePoints(elapsedTime: Long): Int {
         return (elapsedTime / 60).toInt() // 1 point per minute
     }
+
+    fun addBudget(activityName: String, timeLimit: Int?, period: String) {
+        if (timeLimit != null) {
+            val newBudget = Budget(activityName = activityName, timeLimit = timeLimit, period = period)
+            _budgets.value = _budgets.value + newBudget
+        } else {
+            // Handle the case where timeLimit is null, e.g., log an error or provide a default value
+            println("Time limit cannot be null")
+        }
+    }
+
 }

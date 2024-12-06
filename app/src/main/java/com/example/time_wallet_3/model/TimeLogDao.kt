@@ -7,20 +7,20 @@ import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
 @Dao
-interface UserTimeLogDao {
+interface TimeLogDao {
 
     @Insert
-    suspend fun insertLog(log: UserTimeLog)
+    suspend fun insertLog(log: TimeLog)
 
     @Query("SELECT * FROM user_time_logs ORDER BY date DESC")
-    fun getAllLogs(): Flow<List<UserTimeLog>>
+    fun getAllLogs(): Flow<List<TimeLog>>
 
     @Query("DELETE FROM user_time_logs")
     suspend fun deleteAllLogs()
 
     @Query("SELECT * FROM user_time_logs WHERE id = :logId")
-    fun getLogById(logId: Int): Flow<UserTimeLog?>
+    fun getLogById(logId: Int): Flow<TimeLog?>
 
     @Delete
-    suspend fun deleteLog(log: UserTimeLog)
+    suspend fun deleteLog(log: TimeLog)
 }
