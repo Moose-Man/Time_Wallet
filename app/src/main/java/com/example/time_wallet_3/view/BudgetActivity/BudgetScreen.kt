@@ -2,6 +2,7 @@ package com.example.time_wallet_3.view.BudgetActivity
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -14,35 +15,26 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.material3.Card
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import com.example.time_wallet_3.model.Budget
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.KeyboardType
-import com.example.time_wallet_3.R
 import com.example.time_wallet_3.model.Activity
 
 
@@ -71,9 +63,13 @@ fun BudgetScreen(viewModel: viewmodel) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                LazyColumn {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
                     items(budgets) { budget ->
-                        BudgetItem(budget)
+                        BudgetItem(budget = budget, viewModel = viewModel)
                     }
                 }
             }
@@ -198,26 +194,31 @@ fun AddBudgetDialog(
 }
 
 
-
 @Composable
-fun BudgetItem(budget: Budget) {
+fun BudgetItem(budget: Budget, viewModel: viewmodel) {
+    val timeElapsed = viewModel.getElapsedTimeForActivity(budget.activityName) // Fetch total time elapsed
+    val progress = timeElapsed / (budget.timeLimit * 3600f * 1000f) // Calculate progress as fraction
+    val progressText = viewModel.formatElapsedTime(timeElapsed, budget.timeLimit)
+
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(4.dp)
+        modifier = Modifier.padding(8.dp),
+        elevation = CardDefaults.cardElevation(4.dp), // Use CardDefaults for Material3
+        shape = RoundedCornerShape(8.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(budget.activityName, style = MaterialTheme.typography.bodyLarge)
-            Text("${budget.timeLimit} hrs/${budget.period}", style = MaterialTheme.typography.bodyMedium)
+            Text(text = budget.activityName, style = MaterialTheme.typography.bodyLarge)
+            LinearProgressIndicator(
+                progress = { progress.coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(text = progressText, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
+
+
 
 

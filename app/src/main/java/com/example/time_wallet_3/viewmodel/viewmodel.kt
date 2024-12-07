@@ -32,23 +32,35 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
     val timeElapsed = MutableStateFlow(0L) // Elapsed time in seconds
     val isTimerRunning = MutableStateFlow(false) // Timer running state
 
-    val logs: Flow<List<TimeLog>> = dao.getAllLogs()
+    //val logs: Flow<List<TimeLog>> = dao.getAllLogs()
+
+    private val _logs = MutableStateFlow<List<TimeLog>>(emptyList())
+    val logs: StateFlow<List<TimeLog>> get() = _logs
+
+    init {
+        viewModelScope.launch {
+            dao.getAllLogs().collect { fetchedLogs ->
+                _logs.value = fetchedLogs
+            }
+        }
+    }
+
 
     /**
      * Starts the timer and updates elapsed time in real-time.
      */
-//    fun startTimer() {
-//        if (!isTimerRunning.value) {
-//            startTime = System.currentTimeMillis()
-//            isTimerRunning.value = true
-//            timerJob = viewModelScope.launch {
-//                while (isTimerRunning.value) {
-//                    timeElapsed.value = (System.currentTimeMillis() - startTime) / 1000
-//                    delay(1000) // Update every second
-//                }
-//            }
-//        }
-//    }
+    fun startTimer() {
+        if (!isTimerRunning.value) {
+            startTime = System.currentTimeMillis()
+            isTimerRunning.value = true
+            timerJob = viewModelScope.launch {
+                while (isTimerRunning.value) {
+                    timeElapsed.value = (System.currentTimeMillis() - startTime) / 1000
+                    delay(1000) // Update every second
+                }
+            }
+        }
+    }
 
     fun saveBudgetLimits(limits: Map<String, Int>) {
         viewModelScope.launch {
@@ -67,19 +79,19 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
         return ActivityDao.getActivityByName(name) // Add this function in your DAO
     }
 
-    fun startTimer(simulatedSpeed: Int = 10) {
-        if (!isTimerRunning.value) {
-            startTime = System.currentTimeMillis()
-            isTimerRunning.value = true
-            timerJob = viewModelScope.launch {
-                while (isTimerRunning.value) {
-                    // Simulate faster time increment
-                    timeElapsed.value += simulatedSpeed
-                    delay(1000L / simulatedSpeed) // Adjust delay for faster updates
-                }
-            }
-        }
-    }
+//    fun startTimer(simulatedSpeed: Int = 10) {
+//        if (!isTimerRunning.value) {
+//            startTime = System.currentTimeMillis()
+//            isTimerRunning.value = true
+//            timerJob = viewModelScope.launch {
+//                while (isTimerRunning.value) {
+//                    // Simulate faster time increment
+//                    timeElapsed.value += simulatedSpeed
+//                    delay(1000L / simulatedSpeed) // Adjust delay for faster updates
+//                }
+//            }
+//        }
+//    }
 
 
     /**
@@ -179,6 +191,30 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
             // Handle the case where timeLimit is null, e.g., log an error or provide a default value
             println("Time limit cannot be null")
         }
+    }
+
+    fun updateBudgetProgress(activityName: String, timeElapsed: Long) {
+        val timeInHours = (timeElapsed.toDouble()/3600)
+        _budgets.value = _budgets.value.map { budget ->
+            if (budget.activityName == activityName) {
+                budget.copy(currentProgress = (budget.currentProgress + timeInHours).toInt())
+            } else {
+                budget
+            }
+        }
+    }
+
+    fun formatElapsedTime(timeElapsed: Long, timeLimit: Int): String {
+        val totalMinutes = (timeElapsed / 1000 / 60).toInt()
+        val hours = totalMinutes / 60
+        val minutes = totalMinutes % 60
+        return "${hours}h${minutes}m/$timeLimit h"
+    }
+
+    fun getElapsedTimeForActivity(activityName: String): Long {
+        // Replace with your logic to calculate total time for the given activity
+        val logs = _logs.value.filter { it.activity == activityName }
+        return logs.sumOf { it.elapsedTime } * 1000L // Convert seconds to milliseconds
     }
 
 }

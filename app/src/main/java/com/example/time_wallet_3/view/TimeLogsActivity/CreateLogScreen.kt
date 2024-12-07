@@ -119,6 +119,7 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel) {
                             viewModel.setSimulatedDate(customDate.value)
                         }
                         viewModel.addLog(selectedActivity.value, note.value) // Use selected activity
+                        viewModel.updateBudgetProgress(selectedActivity.value, timeElapsed)
                         navController.navigate("view_logs")
                     },
                     enabled = isTimerRunning
