@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.time_wallet_3.model.Activity
 import com.example.time_wallet_3.model.ActivityDao
 import com.example.time_wallet_3.model.Budget
+import com.example.time_wallet_3.model.DatabaseInstance.budgetDao
 import com.example.time_wallet_3.model.TimeLog
 import com.example.time_wallet_3.model.TimeLogDao
 import kotlinx.coroutines.Job
@@ -15,14 +16,15 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.Calendar
 
 class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDao) : ViewModel() {
 
     private val _budgets = MutableStateFlow<List<Budget>>(emptyList())
-    val budgets: StateFlow<List<Budget>> = _budgets
     val activities: Flow<List<Activity>> = ActivityDao.getAllActivities()
     private var simulatedDate: LocalDate? = null // For testing purposes
     @RequiresApi(Build.VERSION_CODES.O)
@@ -31,11 +33,13 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
     private var timerJob: Job? = null // Job to manage the timer coroutine
     val timeElapsed = MutableStateFlow(0L) // Elapsed time in seconds
     val isTimerRunning = MutableStateFlow(false) // Timer running state
-
-    //val logs: Flow<List<TimeLog>> = dao.getAllLogs()
-
     private val _logs = MutableStateFlow<List<TimeLog>>(emptyList())
     val logs: StateFlow<List<TimeLog>> get() = _logs
+    private val _totalPoints = MutableStateFlow(0) // Points tracked independently
+    val totalPoints: Flow<Int> = dao.getTotalPoints() // Fetch total points from the database
+    val budgets: Flow<List<Budget>> = budgetDao.getAllBudgets()
+
+
 
     init {
         viewModelScope.launch {
@@ -79,21 +83,6 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
         return ActivityDao.getActivityByName(name) // Add this function in your DAO
     }
 
-//    fun startTimer(simulatedSpeed: Int = 10) {
-//        if (!isTimerRunning.value) {
-//            startTime = System.currentTimeMillis()
-//            isTimerRunning.value = true
-//            timerJob = viewModelScope.launch {
-//                while (isTimerRunning.value) {
-//                    // Simulate faster time increment
-//                    timeElapsed.value += simulatedSpeed
-//                    delay(1000L / simulatedSpeed) // Adjust delay for faster updates
-//                }
-//            }
-//        }
-//    }
-
-
     /**
      * Stops the timer and finalizes elapsed time.
      */
@@ -105,9 +94,52 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
         }
     }
 
-    // Function to calculate total points
-    val totalPoints: Flow<Int> = logs.map { logs ->
-        logs.sumOf { it.points }
+    fun resetBudgetsIfNeeded() {
+        val now = System.currentTimeMillis()
+        val startOfDay = getStartOfDayInMillis()
+        val oneDayMillis = 24 * 60 * 60 * 1000L
+        val oneWeekMillis = 7 * oneDayMillis
+        val oneMonthMillis = 30 * oneDayMillis // Approximate month length
+
+        _budgets.value = _budgets.value.map { budget ->
+            val shouldReset = when (budget.period) {
+                "Daily" -> budget.lastResetTime < startOfDay
+                "Weekly" -> budget.lastResetTime < startOfDay - (now % oneWeekMillis)
+                "Monthly" -> budget.lastResetTime < startOfDay - (now % oneMonthMillis)
+                else -> false
+            }
+
+            if (shouldReset) {
+                budget.copy(currentProgress = 0, lastResetTime = now)
+            } else {
+                budget
+            }
+        }
+    }
+
+//    fun resetBudgetProgress(budget: Budget) {
+//        viewModelScope.launch {
+//            val updatedBudget = budget.copy(currentProgress = 0, lastResetTime = System.currentTimeMillis())
+//            updateBudget(updatedBudget)
+//        }
+//    }
+
+    private fun getStartOfDayInMillis(): Long {
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        return calendar.timeInMillis
+    }
+
+    init {
+        viewModelScope.launch {
+            while (true) {
+                resetBudgetsIfNeeded()
+                delay(1 * 1000L)
+            }
+        }
     }
 
     fun addActivity(name: String) {
@@ -154,16 +186,28 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
         val newLog = TimeLog(
             elapsedTime = timeElapsed.value,
             activity = activity,
-            points = calculatePoints(timeElapsed.value),
+            points = calculatePoints(timeElapsed.value), // Points calculation during log creation
             date = currentDate,
-            notes = note, // Adding the note field
-            timeStarted = startTime, // Adding the time started field
-            timeStopped = System.currentTimeMillis() // Adding the time stopped field
+            notes = note,
+            timeStarted = startTime,
+            timeStopped = System.currentTimeMillis()
         )
         viewModelScope.launch {
-            dao.insertLog(newLog)
+            dao.insertLog(newLog) // Persist points with the log
         }
         resetTimerState()
+    }
+
+    private fun handleBudgetExceed(activityName: String, elapsedTime: Long) {
+        val relevantBudget = _budgets.value.find { it.activityName == activityName }
+        relevantBudget?.let { budget ->
+            val timeLimitInMinutes = budget.timeLimitMinutes
+            val timeInMinutes = (elapsedTime / (1000 * 60)).toInt()
+            if (timeInMinutes > timeLimitInMinutes) {
+                val excessMinutes = timeInMinutes - timeLimitInMinutes
+                _totalPoints.value -= excessMinutes * 5 // Deduct points for excess
+            }
+        }
     }
 
     /**
@@ -183,13 +227,52 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
         return (elapsedTime / 60).toInt() // 1 point per minute
     }
 
-    fun addBudget(activityName: String, timeLimit: Int?, period: String) {
-        if (timeLimit != null) {
-            val newBudget = Budget(activityName = activityName, timeLimit = timeLimit, period = period)
-            _budgets.value = _budgets.value + newBudget
-        } else {
-            // Handle the case where timeLimit is null, e.g., log an error or provide a default value
-            println("Time limit cannot be null")
+    fun addBudget(activityName: String, timeLimitMinutes: Int, period: String) {
+        viewModelScope.launch {
+            val newBudget = Budget(
+                activityName = activityName,
+                timeLimitMinutes = timeLimitMinutes,
+                period = period
+            )
+            budgetDao.insertBudget(newBudget)
+        }
+    }
+
+    fun updateBudget(originalBudget: Budget, updatedBudget: Budget) {
+        viewModelScope.launch {
+            // Check if the activity name has changed
+            val shouldReset = originalBudget.activityName != updatedBudget.activityName
+
+            val finalBudget = if (shouldReset) {
+                updatedBudget.copy(currentProgress = 0, lastResetTime = System.currentTimeMillis())
+            } else {
+                updatedBudget
+            }
+
+            // Update the budget in the database
+            budgetDao.updateBudget(finalBudget)
+
+            // Update the in-memory list of budgets
+            _budgets.value = _budgets.value.map { budget ->
+                if (budget.activityName == originalBudget.activityName) finalBudget else budget
+            }
+        }
+    }
+
+
+
+    fun deleteBudget(budget: Budget) {
+        viewModelScope.launch {
+            budgetDao.deleteBudget(budget) // Remove the budget from the database
+            _budgets.value = _budgets.value.filter { it != budget } // Update the local state
+        }
+    }
+
+    init {
+        viewModelScope.launch {
+            budgetDao.getAllBudgets().collect { fetchedBudgets ->
+                _budgets.value = fetchedBudgets
+            }
         }
     }
 
@@ -204,17 +287,40 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
         }
     }
 
-    fun formatElapsedTime(timeElapsed: Long, timeLimit: Int): String {
+    fun formatElapsedTime(timeElapsed: Long, timeLimitMinutes: Int): String {
+        // Convert timeElapsed (milliseconds) to total minutes
         val totalMinutes = (timeElapsed / 1000 / 60).toInt()
         val hours = totalMinutes / 60
         val minutes = totalMinutes % 60
-        return "${hours}h${minutes}m/$timeLimit h"
+
+        // Convert timeLimitMinutes to hours and minutes
+        val limitHours = timeLimitMinutes / 60
+        val limitMinutes = timeLimitMinutes % 60
+
+        return "${hours}h${minutes}m / ${limitHours}h${limitMinutes}m"
     }
 
-    fun getElapsedTimeForActivity(activityName: String): Long {
-        // Replace with your logic to calculate total time for the given activity
-        val logs = _logs.value.filter { it.activity == activityName }
-        return logs.sumOf { it.elapsedTime } * 1000L // Convert seconds to milliseconds
+    fun getElapsedTimeForActivity(activityName: String, lastResetTime: Long): Long {
+        return _logs.value
+            .filter { it.activity == activityName && it.timeStarted >= lastResetTime }
+            .sumOf { it.elapsedTime } * 1000L // Convert seconds to milliseconds
+    }
+
+    fun calculatePointDeductions(logs: List<TimeLog>, budgets: List<Budget>): Int {
+        var totalDeductions = 0
+        budgets.forEach { budget ->
+            val elapsedTimeForActivity = logs
+                .filter { it.activity == budget.activityName }
+                .sumOf { it.elapsedTime } // Sum elapsed time in seconds
+            val timeLoggedInMinutes = (elapsedTimeForActivity / 60).toInt() // Convert to minutes
+            val limitInMinutes = budget.timeLimitMinutes
+
+            val excessMinutes = timeLoggedInMinutes - limitInMinutes
+            if (excessMinutes > 0) {
+                totalDeductions += excessMinutes * 6 // Deduct 5 points for every excess minute
+            }
+        }
+        return totalDeductions
     }
 
 }

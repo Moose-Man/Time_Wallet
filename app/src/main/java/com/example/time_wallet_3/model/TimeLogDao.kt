@@ -21,6 +21,9 @@ interface TimeLogDao {
     @Query("SELECT * FROM user_time_logs WHERE id = :logId")
     fun getLogById(logId: Int): Flow<TimeLog?>
 
+    @Query("SELECT SUM(points) FROM user_time_logs")
+    fun getTotalPoints(): Flow<Int>
+
     @Delete
     suspend fun deleteLog(log: TimeLog)
 }

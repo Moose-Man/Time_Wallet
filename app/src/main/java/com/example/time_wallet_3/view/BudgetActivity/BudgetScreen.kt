@@ -2,6 +2,7 @@ package com.example.time_wallet_3.view.BudgetActivity
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -16,11 +17,15 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -30,17 +35,22 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import com.example.time_wallet_3.model.Budget
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.input.KeyboardType
 import com.example.time_wallet_3.model.Activity
 
 
 @Composable
 fun BudgetScreen(viewModel: viewmodel) {
-    val budgets by viewModel.budgets.collectAsState(initial = emptyList()) // Live data of budgets
+    val budgets by viewModel.budgets.collectAsState(initial = emptyList()) // Live data of budgetsDaily
     val activities by viewModel.activities.collectAsState(initial = emptyList()) // List of activities
     val showAddBudgetDialog = remember { mutableStateOf(false) } // Track dialog visibility
 
@@ -69,7 +79,7 @@ fun BudgetScreen(viewModel: viewmodel) {
                         .padding(16.dp)
                 ) {
                     items(budgets) { budget ->
-                        BudgetItem(budget = budget, viewModel = viewModel)
+                        BudgetItem(budget = budget, viewModel = viewModel, activities = activities)
                     }
                 }
             }
@@ -94,13 +104,13 @@ fun AddBudgetDialog(
     onConfirm: (String, Int, String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val selectedActivity = remember { mutableStateOf(activities.firstOrNull()?.name ?: "") }
     val isActivityDropDownExpanded = remember { mutableStateOf(false) }
-    val timeLimit = remember { mutableStateOf("") }
-
+    val timeLimitHours = remember { mutableStateOf("") }
+    val timeLimitMinutes = remember { mutableStateOf("") }
     val periods = listOf("Daily", "Weekly", "Monthly")
     val selectedPeriod = remember { mutableStateOf(periods.first()) }
     val isPeriodDropDownExpanded = remember { mutableStateOf(false) }
+    val selectedActivity = remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = { onDismiss() },
@@ -136,14 +146,24 @@ fun AddBudgetDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Time Limit TextField
+                // Time Limit Hours TextField
                 OutlinedTextField(
-                    value = timeLimit.value,
-                    onValueChange = { newValue ->
-                        timeLimit.value = newValue.filter { it.isDigit() } // Allow only numbers
-                    },
-                    label = { Text("Time Limit (hours)") },
-                    modifier = Modifier.fillMaxWidth()
+                    value = timeLimitHours.value,
+                    onValueChange = { timeLimitHours.value = it.filter { char -> char.isDigit() } },
+                    label = { Text("Hours") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Time Limit Minutes TextField
+                OutlinedTextField(
+                    value = timeLimitMinutes.value,
+                    onValueChange = { timeLimitMinutes.value = it.filter { char -> char.isDigit() } },
+                    label = { Text("Minutes") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -178,8 +198,10 @@ fun AddBudgetDialog(
         },
         confirmButton = {
             Button(onClick = {
-                if (selectedActivity.value.isNotEmpty() && timeLimit.value.isNotEmpty()) {
-                    onConfirm(selectedActivity.value, timeLimit.value.toInt(), selectedPeriod.value)
+                if (selectedActivity.value.isNotEmpty() && timeLimitHours.value.isNotEmpty()) {
+                    val totalMinutes = (timeLimitHours.value.toIntOrNull() ?: 0) * 60 +
+                            (timeLimitMinutes.value.toIntOrNull() ?: 0)
+                    onConfirm(selectedActivity.value, totalMinutes, selectedPeriod.value)
                 }
             }) {
                 Text("Add")
@@ -195,29 +217,199 @@ fun AddBudgetDialog(
 
 
 @Composable
-fun BudgetItem(budget: Budget, viewModel: viewmodel) {
-    val timeElapsed = viewModel.getElapsedTimeForActivity(budget.activityName) // Fetch total time elapsed
-    val progress = timeElapsed / (budget.timeLimit * 3600f * 1000f) // Calculate progress as fraction
-    val progressText = viewModel.formatElapsedTime(timeElapsed, budget.timeLimit)
+fun BudgetItem(budget: Budget, viewModel: viewmodel, activities: List<Activity>) {
+    val showEditDialog = remember { mutableStateOf(false) }
+
+    if (showEditDialog.value) {
+        EditBudgetDialog(
+            budget = budget,
+            activities = activities,
+            onConfirm = { originalBudget, updatedBudget ->
+                viewModel.updateBudget(originalBudget, updatedBudget)
+                showEditDialog.value = false
+            },
+            onDismiss = { showEditDialog.value = false }
+        )
+    }
 
     Card(
-        modifier = Modifier.padding(8.dp),
-        elevation = CardDefaults.cardElevation(4.dp), // Use CardDefaults for Material3
+        modifier = Modifier
+            .padding(8.dp)
+            .pointerInput(Unit) {
+                detectTapGestures(onLongPress = {
+                    showEditDialog.value = true
+                })
+            },
+        elevation = CardDefaults.cardElevation(4.dp),
         shape = RoundedCornerShape(8.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = budget.activityName, style = MaterialTheme.typography.bodyLarge)
-            LinearProgressIndicator(
-                progress = { progress.coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Text(text = progressText, style = MaterialTheme.typography.bodySmall)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(text = budget.activityName, style = MaterialTheme.typography.bodyLarge)
+                LinearProgressIndicator(
+                    progress = {
+                        (viewModel.getElapsedTimeForActivity(budget.activityName, budget.lastResetTime) /
+                                (budget.timeLimitMinutes * 60f * 1000f)).coerceIn(0f, 1f)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    text = viewModel.formatElapsedTime(
+                        viewModel.getElapsedTimeForActivity(budget.activityName, budget.lastResetTime),
+                        budget.timeLimitMinutes
+                    ),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            IconButton(onClick = { viewModel.deleteBudget(budget) }) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete Budget",
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
         }
     }
 }
+
+@Composable
+fun EditBudgetDialog(
+    budget: Budget,
+    activities: List<Activity>, // Pass available activities
+    onConfirm: (Budget, Budget) -> Unit, // Pass both original and updated budget
+    onDismiss: () -> Unit
+) {
+    val selectedActivity = remember { mutableStateOf(budget.activityName) }
+    val isActivityDropDownExpanded = remember { mutableStateOf(false) }
+    val updatedTimeLimitHours = remember { mutableStateOf((budget.timeLimitMinutes / 60).toString()) }
+    val updatedTimeLimitMinutes = remember { mutableStateOf((budget.timeLimitMinutes % 60).toString()) }
+    val periods = listOf("Daily", "Weekly", "Monthly")
+    val updatedPeriod = remember { mutableStateOf(budget.period) }
+    val isPeriodDropDownExpanded = remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = { onDismiss() },
+        title = { Text("Edit Budget") },
+        text = {
+            Column {
+                // Activity Dropdown
+                Box {
+                    Text(
+                        text = if (selectedActivity.value.isNotEmpty()) selectedActivity.value else "Select Activity",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp)
+                            .clickable { isActivityDropDownExpanded.value = true }
+                            .background(Color.LightGray)
+                            .padding(8.dp)
+                    )
+                    DropdownMenu(
+                        expanded = isActivityDropDownExpanded.value,
+                        onDismissRequest = { isActivityDropDownExpanded.value = false }
+                    ) {
+                        activities.forEach { activity ->
+                            DropdownMenuItem(
+                                text = { Text(activity.name) },
+                                onClick = {
+                                    selectedActivity.value = activity.name
+                                    isActivityDropDownExpanded.value = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Time Limit Hours Field
+                OutlinedTextField(
+                    value = updatedTimeLimitHours.value,
+                    onValueChange = { updatedTimeLimitHours.value = it.filter { char -> char.isDigit() } },
+                    label = { Text("Hours") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Time Limit Minutes Field
+                OutlinedTextField(
+                    value = updatedTimeLimitMinutes.value,
+                    onValueChange = { updatedTimeLimitMinutes.value = it.filter { char -> char.isDigit() } },
+                    label = { Text("Minutes") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Period Dropdown
+                Box {
+                    Text(
+                        text = updatedPeriod.value,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp)
+                            .clickable { isPeriodDropDownExpanded.value = true }
+                            .background(Color.LightGray)
+                            .padding(8.dp)
+                    )
+                    DropdownMenu(
+                        expanded = isPeriodDropDownExpanded.value,
+                        onDismissRequest = { isPeriodDropDownExpanded.value = false }
+                    ) {
+                        periods.forEach { period ->
+                            DropdownMenuItem(
+                                text = { Text(period) },
+                                onClick = {
+                                    updatedPeriod.value = period
+                                    isPeriodDropDownExpanded.value = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                if (selectedActivity.value.isNotEmpty() && updatedTimeLimitHours.value.isNotEmpty()) {
+                    val totalMinutes = (updatedTimeLimitHours.value.toIntOrNull() ?: 0) * 60 +
+                            (updatedTimeLimitMinutes.value.toIntOrNull() ?: 0)
+                    val updatedBudget = budget.copy(
+                        activityName = selectedActivity.value,
+                        timeLimitMinutes = totalMinutes,
+                        period = updatedPeriod.value
+                    )
+                    onConfirm(budget, updatedBudget) // Pass both original and updated budgets
+                }
+            }) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+
+
+
+
+
+
 
 
 

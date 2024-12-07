@@ -21,8 +21,8 @@ class MainActivity : ComponentActivity() {
 
         // Use the unified database instance
         val database = DatabaseInstance.getDatabase(application)
-        val timeLogDao = database.userTimeLogDao()
-        val activitiesDao = database.userActivityDao()
+        val timeLogDao = database.timeLogDao()
+        val activitiesDao = database.activityDao()
         val viewModelFactory = ViewModelFactory(timeLogDao, activitiesDao)
         val sharedViewModel: viewmodel = ViewModelProvider(this, viewModelFactory)[viewmodel::class.java]
 

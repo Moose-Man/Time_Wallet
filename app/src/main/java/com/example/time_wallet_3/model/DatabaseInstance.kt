@@ -20,4 +20,10 @@ object DatabaseInstance {
             instance
         }
     }
+
+    // Lazy initialization for the BudgetDao
+    val budgetDao: BudgetDao
+        get() = INSTANCE?.budgetDao()
+            ?: throw IllegalStateException("Database has not been initialized. Call getDatabase() first.")
 }
+
