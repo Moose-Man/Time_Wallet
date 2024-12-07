@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.example.time_wallet_3.view.BankActivity.BankScreen
 import com.example.time_wallet_3.view.BudgetActivity.BudgetScreen
 import com.example.time_wallet_3.viewmodel.viewmodel
 
@@ -61,6 +62,12 @@ fun BottomNavigationBar(navController: NavHostController) {
             icon = { Icon(Icons.Default.Search, contentDescription = "Budget") },
             label = { Text("Budget") }
         )
+        BottomNavigationItem(
+            selected = false, // Update this dynamically based on the current route
+            onClick = { navController.navigate("bank_goals") },
+            icon = { Icon(Icons.Default.Search, contentDescription = "Bank") },
+            label = { Text("Bank") }
+        )
     }
 }
 
@@ -72,6 +79,7 @@ fun AppNavigation(navController: NavHostController, sharedViewModel: viewmodel) 
         navController = navController,
         startDestination = "view_logs"
     ) {
+        composable("bank_goals") { BankScreen(viewModel = sharedViewModel) }
         composable("budget") { BudgetScreen(viewModel = sharedViewModel) }
         composable("view_logs") { ViewLogsScreen(navController, sharedViewModel) }
         composable("create_log") { CreateLogScreen(navController, sharedViewModel) }

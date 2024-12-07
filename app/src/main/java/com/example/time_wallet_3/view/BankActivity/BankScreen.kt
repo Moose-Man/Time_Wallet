@@ -1,4 +1,4 @@
-package com.example.time_wallet_3.view.BudgetActivity
+package com.example.time_wallet_3.view.BankActivity
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -39,24 +39,23 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
-import com.example.time_wallet_3.model.Budget
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.input.KeyboardType
 import com.example.time_wallet_3.model.Activity
-
+import com.example.time_wallet_3.model.BankGoal
 
 @Composable
-fun BudgetScreen(viewModel: viewmodel) {
-    val budgets by viewModel.budgets.collectAsState(initial = emptyList()) // Live data of budgetsDaily
-    val activities by viewModel.activities.collectAsState(initial = emptyList()) // List of activities
-    val showAddBudgetDialog = remember { mutableStateOf(false) } // Track dialog visibility
+fun BankScreen(viewModel: viewmodel) {
+    val bankGoals by viewModel.bankGoals.collectAsState(initial = emptyList())
+    val activities by viewModel.activities.collectAsState(initial = emptyList())
+    val showAddBankGoalDialog = remember { mutableStateOf(false) }
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddBudgetDialog.value = true }) {
+            FloatingActionButton(onClick = { showAddBankGoalDialog.value = true }) {
                 Text("+", style = MaterialTheme.typography.bodyLarge)
             }
         }
@@ -67,9 +66,11 @@ fun BudgetScreen(viewModel: viewmodel) {
                 .padding(innerPadding)
         ) {
             Column(
-                modifier = Modifier.fillMaxSize().padding(16.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
             ) {
-                Text("Budgets", style = MaterialTheme.typography.headlineSmall)
+                Text("Bank Goals", style = MaterialTheme.typography.headlineSmall)
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -78,35 +79,178 @@ fun BudgetScreen(viewModel: viewmodel) {
                         .fillMaxSize()
                         .padding(16.dp)
                 ) {
-                    items(budgets) { budget ->
-                        BudgetItem(budget = budget, viewModel = viewModel, activities = activities)
+                    items(bankGoals) { bankGoal ->
+                        BankGoalItem(bankGoal = bankGoal, viewModel = viewModel, activities = activities)
                     }
                 }
             }
 
-            if (showAddBudgetDialog.value) {
-                AddBudgetDialog(
+            if (showAddBankGoalDialog.value) {
+                AddBankGoalDialog(
                     activities = activities,
-                    onConfirm = { activityName, timeLimit, period ->
-                        viewModel.addBudget(activityName, timeLimit, period) // Pass all parameters
-                        showAddBudgetDialog.value = false
+                    onConfirm = { activityName, timeGoalMinutes, period ->
+                        viewModel.addBankGoal(activityName, timeGoalMinutes, period)
+                        showAddBankGoalDialog.value = false
                     },
-                    onDismiss = { showAddBudgetDialog.value = false }
+                    onDismiss = { showAddBankGoalDialog.value = false }
                 )
             }
         }
     }
 }
 
+//@Composable
+//fun AddBankGoalDialog(
+//    activities: List<Activity>,
+//    onConfirm: (String, Int, String) -> Unit,
+//    onDismiss: () -> Unit
+//) {
+//    val isActivityDropDownExpanded = remember { mutableStateOf(false) }
+//    val timeGoalHours = remember { mutableStateOf("") }
+//    val timeGoalMinutes = remember { mutableStateOf("") }
+//    val periods = listOf("Daily", "Weekly", "Monthly")
+//    val selectedPeriod = remember { mutableStateOf(periods.first()) }
+//    val isPeriodDropDownExpanded = remember { mutableStateOf(false) }
+//    val selectedActivity = remember { mutableStateOf("") }
+//
+//    AlertDialog(
+//        onDismissRequest = { onDismiss() },
+//        title = { Text("Add New Time Goal") },
+//        text = {
+//            Column {
+//                // Activity Dropdown
+//                Box {
+//                    Text(
+//                        text = if (selectedActivity.value.isNotEmpty()) selectedActivity.value else "Select Activity",
+//                        modifier = Modifier
+//                            .fillMaxWidth()
+//                            .padding(8.dp)
+//                            .clickable { isActivityDropDownExpanded.value = true }
+//                            .background(Color.LightGray)
+//                            .padding(8.dp)
+//                    )
+//                    DropdownMenu(
+//                        expanded = isActivityDropDownExpanded.value,
+//                        onDismissRequest = { isActivityDropDownExpanded.value = false }
+//                    ) {
+//                        activities.forEach { activity ->
+//                            DropdownMenuItem(
+//                                text = { Text(activity.name) },
+//                                onClick = {
+//                                    selectedActivity.value = activity.name
+//                                    isActivityDropDownExpanded.value = false
+//                                }
+//                            )
+//                        }
+//                    }
+//                }
+//
+//                Spacer(modifier = Modifier.height(16.dp))
+//
+//                // Time Goal Hours TextField
+//                OutlinedTextField(
+//                    value = timeGoalHours.value,
+//                    onValueChange = { timeGoalHours.value = it.filter { char -> char.isDigit() } },
+//                    label = { Text("Hours") },
+//                    modifier = Modifier.fillMaxWidth(),
+//                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+//                )
+//
+//                Spacer(modifier = Modifier.height(8.dp))
+//
+//                // Time Goal Minutes TextField
+//                OutlinedTextField(
+//                    value = timeGoalMinutes.value,
+//                    onValueChange = { timeGoalMinutes.value = it.filter { char -> char.isDigit() } },
+//                    label = { Text("Minutes") },
+//                    modifier = Modifier.fillMaxWidth(),
+//                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+//                )
+//
+//                Spacer(modifier = Modifier.height(16.dp))
+//
+//                // Period Dropdown
+//                Box {
+//                    Text(
+//                        text = selectedPeriod.value,
+//                        modifier = Modifier
+//                            .fillMaxWidth()
+//                            .padding(8.dp)
+//                            .clickable { isPeriodDropDownExpanded.value = true }
+//                            .background(Color.LightGray)
+//                            .padding(8.dp)
+//                    )
+//                    DropdownMenu(
+//                        expanded = isPeriodDropDownExpanded.value,
+//                        onDismissRequest = { isPeriodDropDownExpanded.value = false }
+//                    ) {
+//                        periods.forEach { period ->
+//                            DropdownMenuItem(
+//                                text = { Text(period) },
+//                                onClick = {
+//                                    selectedPeriod.value = period
+//                                    isPeriodDropDownExpanded.value = false
+//                                }
+//                            )
+//                        }
+//                    }
+//                }
+//            }
+//        },
+//        confirmButton = {
+//            Button(onClick = {
+//                if (selectedActivity.value.isNotEmpty() && timeGoalHours.value.isNotEmpty()) {
+//                    val totalMinutes = (timeGoalHours.value.toIntOrNull() ?: 0) * 60 +
+//                            (timeGoalMinutes.value.toIntOrNull() ?: 0)
+//                    onConfirm(selectedActivity.value, totalMinutes, selectedPeriod.value)
+//                }
+//            }) {
+//                Text("Add")
+//            }
+//        },
+//        dismissButton = {
+//            Button(onClick = onDismiss) {
+//                Text("Cancel")
+//            }
+//        }
+//    )
+//}
+//
+//
+//@Composable
+//fun BankGoalItem(bankGoal: BankGoal, viewModel: viewmodel, activities: List<Activity>) {
+//    val timeElapsed = viewModel.getElapsedTimeForActivity(bankGoal.activityName, bankGoal.lastResetTime)
+//    val progress = timeElapsed / (bankGoal.timeGoalMinutes * 60f * 1000f)
+//    val progressText = viewModel.formatElapsedTime(timeElapsed, bankGoal.timeGoalMinutes)
+//
+//    Card(
+//        modifier = Modifier.padding(8.dp),
+//        elevation = CardDefaults.cardElevation(4.dp),
+//        shape = RoundedCornerShape(8.dp)
+//    ) {
+//        Column(
+//            modifier = Modifier.padding(16.dp),
+//            verticalArrangement = Arrangement.spacedBy(8.dp)
+//        ) {
+//            Text(text = bankGoal.activityName, style = MaterialTheme.typography.bodyLarge)
+//            LinearProgressIndicator(
+//                progress = { progress.coerceIn(0f, 1f) },
+//                modifier = Modifier.fillMaxWidth(),
+//            )
+//            Text(text = progressText, style = MaterialTheme.typography.bodySmall)
+//        }
+//    }
+//}
+
 @Composable
-fun AddBudgetDialog(
+fun AddBankGoalDialog(
     activities: List<Activity>,
     onConfirm: (String, Int, String) -> Unit,
     onDismiss: () -> Unit
 ) {
     val isActivityDropDownExpanded = remember { mutableStateOf(false) }
-    val timeLimitHours = remember { mutableStateOf("") }
-    val timeLimitMinutes = remember { mutableStateOf("") }
+    val timeGoalHours = remember { mutableStateOf("") }
+    val timeGoalMinutes = remember { mutableStateOf("") }
     val periods = listOf("Daily", "Weekly", "Monthly")
     val selectedPeriod = remember { mutableStateOf(periods.first()) }
     val isPeriodDropDownExpanded = remember { mutableStateOf(false) }
@@ -114,7 +258,7 @@ fun AddBudgetDialog(
 
     AlertDialog(
         onDismissRequest = { onDismiss() },
-        title = { Text("Add New Budget") },
+        title = { Text("Add New Bank Goal") },
         text = {
             Column {
                 // Activity Dropdown
@@ -146,10 +290,10 @@ fun AddBudgetDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Time Limit Hours TextField
+                // Time Goal Hours TextField
                 OutlinedTextField(
-                    value = timeLimitHours.value,
-                    onValueChange = { timeLimitHours.value = it.filter { char -> char.isDigit() } },
+                    value = timeGoalHours.value,
+                    onValueChange = { timeGoalHours.value = it.filter { char -> char.isDigit() } },
                     label = { Text("Hours") },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
@@ -157,10 +301,10 @@ fun AddBudgetDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Time Limit Minutes TextField
+                // Time Goal Minutes TextField
                 OutlinedTextField(
-                    value = timeLimitMinutes.value,
-                    onValueChange = { timeLimitMinutes.value = it.filter { char -> char.isDigit() } },
+                    value = timeGoalMinutes.value,
+                    onValueChange = { timeGoalMinutes.value = it.filter { char -> char.isDigit() } },
                     label = { Text("Minutes") },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
@@ -198,9 +342,9 @@ fun AddBudgetDialog(
         },
         confirmButton = {
             Button(onClick = {
-                if (selectedActivity.value.isNotEmpty() && timeLimitHours.value.isNotEmpty()) {
-                    val totalMinutes = (timeLimitHours.value.toIntOrNull() ?: 0) * 60 +
-                            (timeLimitMinutes.value.toIntOrNull() ?: 0)
+                if (selectedActivity.value.isNotEmpty() && timeGoalHours.value.isNotEmpty()) {
+                    val totalMinutes = (timeGoalHours.value.toIntOrNull() ?: 0) * 60 +
+                            (timeGoalMinutes.value.toIntOrNull() ?: 0)
                     onConfirm(selectedActivity.value, totalMinutes, selectedPeriod.value)
                 }
             }) {
@@ -217,15 +361,15 @@ fun AddBudgetDialog(
 
 
 @Composable
-fun BudgetItem(budget: Budget, viewModel: viewmodel, activities: List<Activity>) {
+fun BankGoalItem(bankGoal: BankGoal, viewModel: viewmodel, activities: List<Activity>) {
     val showEditDialog = remember { mutableStateOf(false) }
 
     if (showEditDialog.value) {
-        EditBudgetDialog(
-            budget = budget,
+        EditBankGoalDialog(
+            bankGoal = bankGoal,
             activities = activities,
-            onConfirm = { originalBudget, updatedBudget ->
-                viewModel.updateBudget(originalBudget, updatedBudget)
+            onConfirm = { originalBankGoal, updatedBankGoal ->
+                viewModel.updateBankGoal(originalBankGoal, updatedBankGoal)
                 showEditDialog.value = false
             },
             onDismiss = { showEditDialog.value = false }
@@ -253,27 +397,27 @@ fun BudgetItem(budget: Budget, viewModel: viewmodel, activities: List<Activity>)
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(text = "${budget.activityName} - ${budget.period}", style = MaterialTheme.typography.bodyLarge)
+                Text(text = "${bankGoal.activityName} - ${bankGoal.period}", style = MaterialTheme.typography.bodyLarge)
                 LinearProgressIndicator(
                     progress = {
-                        (viewModel.getElapsedTimeForActivity(budget.activityName, budget.lastResetTime) /
-                                (budget.timeLimitMinutes * 60f * 1000f)).coerceIn(0f, 1f)
+                        (viewModel.getElapsedTimeForActivity(bankGoal.activityName, bankGoal.lastResetTime) /
+                                (bankGoal.timeGoalMinutes * 60f * 1000f)).coerceIn(0f, 1f)
                     },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Text(
                     text = viewModel.formatElapsedTime(
-                        viewModel.getElapsedTimeForActivity(budget.activityName, budget.lastResetTime),
-                        budget.timeLimitMinutes
+                        viewModel.getElapsedTimeForActivity(bankGoal.activityName, bankGoal.lastResetTime),
+                        bankGoal.timeGoalMinutes
                     ),
                     style = MaterialTheme.typography.bodySmall
                 )
             }
 
-            IconButton(onClick = { viewModel.deleteBudget(budget) }) {
+            IconButton(onClick = { viewModel.deleteBankGoal(bankGoal) }) {
                 Icon(
                     imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete Budget",
+                    contentDescription = "Delete Bank Goal",
                     tint = MaterialTheme.colorScheme.error
                 )
             }
@@ -282,23 +426,23 @@ fun BudgetItem(budget: Budget, viewModel: viewmodel, activities: List<Activity>)
 }
 
 @Composable
-fun EditBudgetDialog(
-    budget: Budget,
+fun EditBankGoalDialog(
+    bankGoal: BankGoal,
     activities: List<Activity>, // Pass available activities
-    onConfirm: (Budget, Budget) -> Unit, // Pass both original and updated budget
+    onConfirm: (BankGoal, BankGoal) -> Unit, // Pass both original and updated bank goal
     onDismiss: () -> Unit
 ) {
-    val selectedActivity = remember { mutableStateOf(budget.activityName) }
+    val selectedActivity = remember { mutableStateOf(bankGoal.activityName) }
     val isActivityDropDownExpanded = remember { mutableStateOf(false) }
-    val updatedTimeLimitHours = remember { mutableStateOf((budget.timeLimitMinutes / 60).toString()) }
-    val updatedTimeLimitMinutes = remember { mutableStateOf((budget.timeLimitMinutes % 60).toString()) }
+    val updatedTimeGoalHours = remember { mutableStateOf((bankGoal.timeGoalMinutes / 60).toString()) }
+    val updatedTimeGoalMinutes = remember { mutableStateOf((bankGoal.timeGoalMinutes % 60).toString()) }
     val periods = listOf("Daily", "Weekly", "Monthly")
-    val updatedPeriod = remember { mutableStateOf(budget.period) }
+    val updatedPeriod = remember { mutableStateOf(bankGoal.period) }
     val isPeriodDropDownExpanded = remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = { onDismiss() },
-        title = { Text("Edit Budget") },
+        title = { Text("Edit Goal") },
         text = {
             Column {
                 // Activity Dropdown
@@ -330,10 +474,10 @@ fun EditBudgetDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Time Limit Hours Field
+                // Time Goal Hours Field
                 OutlinedTextField(
-                    value = updatedTimeLimitHours.value,
-                    onValueChange = { updatedTimeLimitHours.value = it.filter { char -> char.isDigit() } },
+                    value = updatedTimeGoalHours.value,
+                    onValueChange = { updatedTimeGoalHours.value = it.filter { char -> char.isDigit() } },
                     label = { Text("Hours") },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
@@ -341,10 +485,10 @@ fun EditBudgetDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Time Limit Minutes Field
+                // Time Goal Minutes Field
                 OutlinedTextField(
-                    value = updatedTimeLimitMinutes.value,
-                    onValueChange = { updatedTimeLimitMinutes.value = it.filter { char -> char.isDigit() } },
+                    value = updatedTimeGoalMinutes.value,
+                    onValueChange = { updatedTimeGoalMinutes.value = it.filter { char -> char.isDigit() } },
                     label = { Text("Minutes") },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
@@ -382,15 +526,15 @@ fun EditBudgetDialog(
         },
         confirmButton = {
             Button(onClick = {
-                if (selectedActivity.value.isNotEmpty() && updatedTimeLimitHours.value.isNotEmpty()) {
-                    val totalMinutes = (updatedTimeLimitHours.value.toIntOrNull() ?: 0) * 60 +
-                            (updatedTimeLimitMinutes.value.toIntOrNull() ?: 0)
-                    val updatedBudget = budget.copy(
+                if (selectedActivity.value.isNotEmpty() && updatedTimeGoalHours.value.isNotEmpty()) {
+                    val totalMinutes = (updatedTimeGoalHours.value.toIntOrNull() ?: 0) * 60 +
+                            (updatedTimeGoalMinutes.value.toIntOrNull() ?: 0)
+                    val updatedBankGoal = bankGoal.copy(
                         activityName = selectedActivity.value,
-                        timeLimitMinutes = totalMinutes,
+                        timeGoalMinutes = totalMinutes,
                         period = updatedPeriod.value
                     )
-                    onConfirm(budget, updatedBudget) // Pass both original and updated budgets
+                    onConfirm(bankGoal, updatedBankGoal)
                 }
             }) {
                 Text("Save")
@@ -403,14 +547,3 @@ fun EditBudgetDialog(
         }
     )
 }
-
-
-
-
-
-
-
-
-
-
-

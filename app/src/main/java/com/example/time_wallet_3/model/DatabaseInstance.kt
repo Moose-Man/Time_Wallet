@@ -21,9 +21,12 @@ object DatabaseInstance {
         }
     }
 
-    // Lazy initialization for the BudgetDao
     val budgetDao: BudgetDao
         get() = INSTANCE?.budgetDao()
+            ?: throw IllegalStateException("Database has not been initialized. Call getDatabase() first.")
+
+    val bankGoalDao: BankGoalDao
+        get() = INSTANCE?.bankGoalDao()
             ?: throw IllegalStateException("Database has not been initialized. Call getDatabase() first.")
 }
 
