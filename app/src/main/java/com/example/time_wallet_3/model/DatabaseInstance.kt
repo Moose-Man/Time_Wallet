@@ -14,19 +14,11 @@ object DatabaseInstance {
                 AppDatabase::class.java,
                 "app_database" // Ensure a single database name
             )
-                .fallbackToDestructiveMigration() // Enable destructive migration
+                .addMigrations(MIGRATION_1_2)
                 .build()
             INSTANCE = instance
             instance
         }
     }
-
-    val budgetDao: BudgetDao
-        get() = INSTANCE?.budgetDao()
-            ?: throw IllegalStateException("Database has not been initialized. Call getDatabase() first.")
-
-    val bankGoalDao: BankGoalDao
-        get() = INSTANCE?.bankGoalDao()
-            ?: throw IllegalStateException("Database has not been initialized. Call getDatabase() first.")
 }
 

@@ -50,7 +50,7 @@ import com.example.time_wallet_3.model.BankGoal
 import com.example.time_wallet_3.view.TimeLogsActivity.HeaderSection
 
 @Composable
-fun BankScreen(viewModel: viewmodel, navController: NavHostController) {
+fun BankScreen(viewModel: viewmodel, navController: NavHostController, accountId: Int) {
     val bankGoals by viewModel.bankGoals.collectAsState(initial = emptyList())
     val activities by viewModel.activities.collectAsState(initial = emptyList())
     val showAddBankGoalDialog = remember { mutableStateOf(false) }
@@ -96,7 +96,7 @@ fun BankScreen(viewModel: viewmodel, navController: NavHostController) {
                     activities = activities,
                     existingGoals = bankGoals.map { it.activityName }, // Pass existing bank goals
                     onConfirm = { activityName, timeGoalMinutes, period ->
-                        viewModel.addBankGoal(activityName, timeGoalMinutes, period)
+                        viewModel.addBankGoal(accountId, activityName, timeGoalMinutes, period)
                         showAddBankGoalDialog.value = false
                     },
                     onDismiss = { showAddBankGoalDialog.value = false }

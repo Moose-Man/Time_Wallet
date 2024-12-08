@@ -54,6 +54,7 @@ import com.example.time_wallet_3.view.TimeLogsActivity.HeaderSection
 fun BudgetScreen(viewModel: viewmodel, navController: NavHostController) {
     val budgets by viewModel.budgets.collectAsState(initial = emptyList()) // Live data of budgets
     val activities by viewModel.activities.collectAsState(initial = emptyList()) // List of activities
+    val currentAccountId by viewModel.currentAccountId.collectAsState() // Observe the active account
     val showAddBudgetDialog = remember { mutableStateOf(false) } // Track dialog visibility
 
     Scaffold(
@@ -96,7 +97,9 @@ fun BudgetScreen(viewModel: viewmodel, navController: NavHostController) {
                     activities = activities,
                     existingBudgets = budgets.map { it.activityName }, // Pass existing budget activities
                     onConfirm = { activityName, timeLimit, period ->
-                        viewModel.addBudget(activityName, timeLimit, period) // Pass all parameters
+                        currentAccountId?.let { accountId ->
+                            viewModel.addBudget(accountId, activityName, timeLimit, period)
+                        }
                         showAddBudgetDialog.value = false
                     },
                     onDismiss = { showAddBudgetDialog.value = false }

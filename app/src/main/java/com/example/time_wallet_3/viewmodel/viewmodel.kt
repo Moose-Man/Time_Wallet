@@ -5,12 +5,14 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.time_wallet_3.model.Account
 import com.example.time_wallet_3.model.Activity
 import com.example.time_wallet_3.model.ActivityDao
+import com.example.time_wallet_3.model.AccountDao
 import com.example.time_wallet_3.model.BankGoal
+import com.example.time_wallet_3.model.BankGoalDao
 import com.example.time_wallet_3.model.Budget
-import com.example.time_wallet_3.model.DatabaseInstance.bankGoalDao
-import com.example.time_wallet_3.model.DatabaseInstance.budgetDao
+import com.example.time_wallet_3.model.BudgetDao
 import com.example.time_wallet_3.model.TimeLog
 import com.example.time_wallet_3.model.TimeLogDao
 import kotlinx.coroutines.Job
@@ -18,16 +20,39 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
 
-class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDao) : ViewModel() {
+class viewmodel(
+    private val dao: TimeLogDao,
+    private val activityDao: ActivityDao,
+    private val accountDao: AccountDao,
+    private val budgetDao: BudgetDao,
+    private val bankGoalDao: BankGoalDao
+    ) : ViewModel() {
 
     private val _budgets = MutableStateFlow<List<Budget>>(emptyList())
     val budgets: Flow<List<Budget>> = budgetDao.getAllBudgets()
-    val activities: Flow<List<Activity>> = ActivityDao.getAllActivities()
+
+    private val _bankGoals = MutableStateFlow<List<BankGoal>>(emptyList())
+    val bankGoals: StateFlow<List<BankGoal>> get() = _bankGoals
+
+    private val _logs = MutableStateFlow<List<TimeLog>>(emptyList())
+    val logs: StateFlow<List<TimeLog>> get() = _logs
+
+    private val _totalPoints = MutableStateFlow(0) // Points tracked independently
+    val totalPoints: Flow<Int> = dao.getTotalPoints() // Fetch total points from the database
+
+    private val _currentAccountId = MutableStateFlow<Int?>(null)
+    val currentAccountId: StateFlow<Int?> = _currentAccountId // Expose it as a read-only StateFlow
+
+    private val _selectedActivity = MutableStateFlow<String?>(null)
+    val selectedActivity: StateFlow<String?> get() = _selectedActivity
+
+    val activities: Flow<List<Activity>> = activityDao.getAllActivities()
     private var simulatedDate: LocalDate? = null // For testing purposes
     @RequiresApi(Build.VERSION_CODES.O)
     private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -35,14 +60,6 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
     private var timerJob: Job? = null // Job to manage the timer coroutine
     val timeElapsed = MutableStateFlow(0L) // Elapsed time in seconds
     val isTimerRunning = MutableStateFlow(false) // Timer running state
-    private val _logs = MutableStateFlow<List<TimeLog>>(emptyList())
-    val logs: StateFlow<List<TimeLog>> get() = _logs
-    private val _totalPoints = MutableStateFlow(0) // Points tracked independently
-    val totalPoints: Flow<Int> = dao.getTotalPoints() // Fetch total points from the database
-    private val _bankGoals = MutableStateFlow<List<BankGoal>>(emptyList())
-    val bankGoals: StateFlow<List<BankGoal>> = _bankGoals
-    private val _selectedActivity = MutableStateFlow<String?>(null)
-    val selectedActivity: StateFlow<String?> get() = _selectedActivity
 
     fun setSelectedActivity(activityName: String) {
         _selectedActivity.value = activityName
@@ -50,24 +67,62 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
 
     init {
         viewModelScope.launch {
+            budgetDao.getAllBudgets().collect { fetchedBudgets ->
+                _budgets.value = fetchedBudgets
+            }
+        }
+
+        viewModelScope.launch {
             bankGoalDao.getAllBankGoals().collect { fetchedGoals ->
                 _bankGoals.value = fetchedGoals
             }
         }
-    }
 
-    fun addBankGoal(activityName: String, timeGoalMinutes: Int, period: String) {
-        val newGoal = BankGoal(activityName = activityName, timeGoalMinutes = timeGoalMinutes, period = period)
-        viewModelScope.launch {
-            bankGoalDao.insertBankGoal(newGoal)
-        }
-    }
-
-    init {
         viewModelScope.launch {
             dao.getAllLogs().collect { fetchedLogs ->
                 _logs.value = fetchedLogs
             }
+        }
+    }
+
+    // Add an account
+    fun addAccount(accountName: String) {
+        viewModelScope.launch {
+            val newAccount = Account(name = accountName)
+            accountDao.insertAccount(newAccount)
+        }
+    }
+
+// Update an account's name
+    fun updateAccountName(account: Account, newName: String) {
+        viewModelScope.launch {
+            accountDao.updateAccountName(account.id, newName) // Pass the ID and new name
+        }
+    }
+
+    // Delete an account
+    fun deleteAccount(account: Account) {
+        viewModelScope.launch {
+            accountDao.deleteAccount(account.id) // Pass the ID
+        }
+    }
+
+    // Set current active account
+    fun setCurrentAccount(accountId: Int) {
+        viewModelScope.launch {
+            _currentAccountId.value = accountId // Update the value of MutableStateFlow
+        }
+    }
+
+    fun addBankGoal(accountId: Int, activityName: String, timeGoalMinutes: Int, period: String) {
+        val newGoal = BankGoal(
+            accountId = accountId,
+            activityName = activityName,
+            timeGoalMinutes = timeGoalMinutes,
+            period = period
+        )
+        viewModelScope.launch {
+            bankGoalDao.insertBankGoal(newGoal)
         }
     }
 
@@ -191,13 +246,13 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
 
     fun addActivity(name: String) {
         viewModelScope.launch {
-            ActivityDao.insertActivity(Activity(name = name))
+            activityDao.insertActivity(Activity(name = name))
         }
     }
 
     fun deleteActivity(activity: Activity) {
         viewModelScope.launch {
-            ActivityDao.deleteActivity(activity)
+            activityDao.deleteActivity(activity)
         }
     }
 
@@ -228,7 +283,7 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
      */
 
     @RequiresApi(Build.VERSION_CODES.O)
-    fun addLog(activity: String, note: String) {
+    fun addLog(accountId: Int, activity: String, note: String) {
         val currentDate = getCurrentDate().format(formatter)
         val elapsedTime = timeElapsed.value * 1000 // Convert seconds to milliseconds
         val newLog = TimeLog(
@@ -238,7 +293,8 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
             date = currentDate,
             notes = note,
             timeStarted = startTime,
-            timeStopped = System.currentTimeMillis()
+            timeStopped = System.currentTimeMillis(),
+            accountId = accountId
         )
 
         viewModelScope.launch {
@@ -249,6 +305,23 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
         resetTimerState()
     }
 
+    fun initializeDefaultAccountIfNeeded() {
+        viewModelScope.launch {
+            val existingAccounts = accountDao.getAllAccounts().firstOrNull()
+            if (existingAccounts.isNullOrEmpty()) {
+                val defaultAccount = Account(name = "Default Account")
+                val defaultAccountId = accountDao.insertAccount(defaultAccount).toInt()
+                setCurrentAccount(defaultAccountId)
+            } else {
+                setCurrentAccount(existingAccounts.first().id)
+            }
+        }
+    }
+
+    // Function to get all accounts from the AccountDao
+    fun getAllAccounts(): Flow<List<Account>> {
+        return accountDao.getAllAccounts() // Assuming this function exists in AccountDao
+    }
 
     /**
      * Resets the timer state.
@@ -267,9 +340,10 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
         return basePoints + bonusPoints
     }
 
-    fun addBudget(activityName: String, timeLimitMinutes: Int, period: String) {
+    fun addBudget(accountId: Int, activityName: String, timeLimitMinutes: Int, period: String) {
         viewModelScope.launch {
             val newBudget = Budget(
+                accountId = accountId,
                 activityName = activityName,
                 timeLimitMinutes = timeLimitMinutes,
                 period = period
@@ -280,65 +354,35 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
 
     fun updateBudget(originalBudget: Budget, updatedBudget: Budget) {
         viewModelScope.launch {
-            // Check if the activity name has changed
-            val shouldReset = originalBudget.activityName != updatedBudget.activityName
-
-            val finalBudget = if (shouldReset) {
+            val finalBudget = if (originalBudget.activityName != updatedBudget.activityName) {
                 updatedBudget.copy(currentProgress = 0, lastResetTime = System.currentTimeMillis())
             } else {
                 updatedBudget
             }
-
-            // Update the budget in the database
             budgetDao.updateBudget(finalBudget)
-
-            // Update the in-memory list of budgets
-            _budgets.value = _budgets.value.map { budget ->
-                if (budget.activityName == originalBudget.activityName) finalBudget else budget
-            }
         }
     }
 
     fun deleteBudget(budget: Budget) {
         viewModelScope.launch {
-            budgetDao.deleteBudget(budget) // Remove the budget from the database
-            _budgets.value = _budgets.value.filter { it != budget } // Update the local state
+            budgetDao.deleteBudget(budget)
         }
     }
 
     fun deleteBankGoal(bankGoal: BankGoal) {
         viewModelScope.launch {
-            bankGoalDao.deleteBankGoal(bankGoal) // Remove the budget from the database
-            _bankGoals.value = _bankGoals.value.filter { it != bankGoal } // Update the local state
+            bankGoalDao.deleteBankGoal(bankGoal)
         }
     }
 
     fun updateBankGoal(originalBankGoal: BankGoal, updatedBankGoal: BankGoal) {
         viewModelScope.launch {
-            // Check if the activity name has changed
-            val shouldReset = originalBankGoal.activityName != updatedBankGoal.activityName
-
-            val finalBankGoal = if (shouldReset) {
+            val finalGoal = if (originalBankGoal.activityName != updatedBankGoal.activityName) {
                 updatedBankGoal.copy(currentProgress = 0, lastResetTime = System.currentTimeMillis())
             } else {
                 updatedBankGoal
             }
-
-            // Update the bank goal in the database
-            bankGoalDao.updateBankGoal(finalBankGoal)
-
-            // Update the in-memory list of bank goals
-            _bankGoals.value = _bankGoals.value.map { bankGoal ->
-                if (bankGoal.activityName == originalBankGoal.activityName) finalBankGoal else bankGoal
-            }
-        }
-    }
-
-    init {
-        viewModelScope.launch {
-            budgetDao.getAllBudgets().collect { fetchedBudgets ->
-                _budgets.value = fetchedBudgets
-            }
+            bankGoalDao.updateBankGoal(finalGoal)
         }
     }
 
