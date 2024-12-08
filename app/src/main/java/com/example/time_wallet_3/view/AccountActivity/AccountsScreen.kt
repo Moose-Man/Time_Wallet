@@ -48,6 +48,11 @@ fun AccountsScreen(viewModel: viewmodel, navController: NavHostController) {
     val showAddAccountDialog = remember { mutableStateOf(false) }
     val showEditAccountDialog = remember { mutableStateOf<Pair<Boolean, Account?>>(false to null) }
 
+//    // Observe changes in logs, budgets, and bank goals for the current account
+//    val logs by viewModel.logs.collectAsState(initial = emptyList())
+//    val budgets by viewModel.budgets.collectAsState(initial = emptyList())
+//    val bankGoals by viewModel.bankGoals.collectAsState(initial = emptyList())
+
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddAccountDialog.value = true }) {

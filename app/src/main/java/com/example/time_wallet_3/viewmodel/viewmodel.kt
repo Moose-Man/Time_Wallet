@@ -20,6 +20,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -35,10 +36,14 @@ class viewmodel(
     ) : ViewModel() {
 
     private val _budgets = MutableStateFlow<List<Budget>>(emptyList())
-    val budgets: Flow<List<Budget>> = budgetDao.getAllBudgets()
+    val budgets: (accountId: Int) -> Flow<List<Budget>> = { accountId ->
+        budgetDao.getBudgetsByAccount(accountId)
+    }
 
     private val _bankGoals = MutableStateFlow<List<BankGoal>>(emptyList())
-    val bankGoals: StateFlow<List<BankGoal>> get() = _bankGoals
+    val bankGoals: (accountId: Int) -> Flow<List<BankGoal>> = { accountId ->
+        bankGoalDao.getBankGoalsByAccount(accountId)
+    }
 
     private val _logs = MutableStateFlow<List<TimeLog>>(emptyList())
     val logs: StateFlow<List<TimeLog>> get() = _logs
@@ -47,7 +52,7 @@ class viewmodel(
     val totalPoints: Flow<Int> = dao.getTotalPoints() // Fetch total points from the database
 
     private val _currentAccountId = MutableStateFlow<Int?>(null)
-    val currentAccountId: StateFlow<Int?> = _currentAccountId // Expose it as a read-only StateFlow
+    val currentAccountId: StateFlow<Int?> get() = _currentAccountId// Expose it as a read-only StateFlow
 
     private val _selectedActivity = MutableStateFlow<String?>(null)
     val selectedActivity: StateFlow<String?> get() = _selectedActivity
@@ -63,6 +68,36 @@ class viewmodel(
 
     fun setSelectedActivity(activityName: String) {
         _selectedActivity.value = activityName
+    }
+
+    // Update the data whenever the current account changes
+    private fun refreshDataForCurrentAccount(accountId: Int) {
+        viewModelScope.launch {
+            // Refresh all data for the current account
+            _budgets.value = budgetDao.getBudgetsByAccount(accountId).first()
+            _bankGoals.value = bankGoalDao.getBankGoalsByAccount(accountId).first()
+            _logs.value = dao.getLogsByAccount(accountId).first()
+        }
+    }
+
+    init {
+        // Observe the current account id and update the data accordingly
+        viewModelScope.launch {
+            currentAccountId.collect { accountId ->
+                accountId?.let {
+                    // Fetch the data for the selected account
+                    fetchAccountData(it)
+                }
+            }
+        }
+    }
+
+    // Function to fetch data based on current account
+    private suspend fun fetchAccountData(accountId: Int) {
+        // Get logs, budgets, and bank goals for the current account
+        _logs.value = dao.getLogsByAccount(accountId).firstOrNull() ?: emptyList()
+        _budgets.value = budgetDao.getBudgetsByAccount(accountId).firstOrNull() ?: emptyList()
+        _bankGoals.value = bankGoalDao.getBankGoalsByAccount(accountId).firstOrNull() ?: emptyList()
     }
 
     init {
@@ -85,11 +120,12 @@ class viewmodel(
         }
     }
 
-    // Add an account
+    // Add new account (for demonstration)
     fun addAccount(accountName: String) {
         viewModelScope.launch {
             val newAccount = Account(name = accountName)
-            accountDao.insertAccount(newAccount)
+            val accountId = accountDao.insertAccount(newAccount).toInt()
+            setCurrentAccount(accountId)  // Automatically set this as the current account after creation
         }
     }
 
@@ -109,9 +145,8 @@ class viewmodel(
 
     // Set current active account
     fun setCurrentAccount(accountId: Int) {
-        viewModelScope.launch {
-            _currentAccountId.value = accountId // Update the value of MutableStateFlow
-        }
+        _currentAccountId.value = accountId
+        refreshDataForCurrentAccount(accountId) // Refresh data when account changes
     }
 
     fun addBankGoal(accountId: Int, activityName: String, timeGoalMinutes: Int, period: String) {
@@ -123,6 +158,7 @@ class viewmodel(
         )
         viewModelScope.launch {
             bankGoalDao.insertBankGoal(newGoal)
+            refreshDataForCurrentAccount(accountId) // Refresh after insert
         }
     }
 
@@ -301,8 +337,8 @@ class viewmodel(
             dao.insertLog(newLog)
             updateBankGoalProgress(activity, elapsedTime) // Update bank goal progress here
         }
-
         resetTimerState()
+        refreshDataForCurrentAccount(accountId) // Refresh after insert
     }
 
     fun initializeDefaultAccountIfNeeded() {
@@ -349,6 +385,7 @@ class viewmodel(
                 period = period
             )
             budgetDao.insertBudget(newBudget)
+            refreshDataForCurrentAccount(accountId) // Refresh after insert
         }
     }
 
