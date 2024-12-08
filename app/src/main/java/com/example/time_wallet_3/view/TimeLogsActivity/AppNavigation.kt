@@ -9,7 +9,11 @@ import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -59,26 +63,26 @@ fun BottomNavigationBar(navController: NavHostController, sharedViewModel: viewm
         BottomNavigationItem(
             selected = false, // Update this dynamically based on the current route
             onClick = { navController.navigate("budget") },
-            icon = { Icon(Icons.Default.Search, contentDescription = "Budget") },
+            icon = { Icon(Icons.Default.ShoppingCart, contentDescription = "Budget") },
             label = { Text("Budget") }
         )
         BottomNavigationItem(
             selected = false, // Update this dynamically based on the current route
             onClick = { navController.navigate("bank_goals/${currentAccountId ?: 0}") }, // Include accountId
-            icon = { Icon(Icons.Default.Search, contentDescription = "Bank") },
+            icon = { Icon(Icons.Default.Done, contentDescription = "Bank") },
             label = { Text("Bank") }
         )
         BottomNavigationItem(
             selected = false, // Update this dynamically based on the current route
             onClick = { navController.navigate("statistics") },
-            icon = { Icon(Icons.Default.Search, contentDescription = "Statistics") },
-            label = { Text("Statistics") }
+            icon = { Icon(Icons.Default.Info, contentDescription = "Statistics") },
+            label = { Text("Stats") }
         )
         BottomNavigationItem(
             selected = false, // Update this dynamically based on the current route
             onClick = { navController.navigate("accounts") },
-            icon = { Icon(Icons.Default.Search, contentDescription = "Accounts") },
-            label = { Text("Accounts") }
+            icon = { Icon(Icons.Default.AccountCircle, contentDescription = "Accounts") },
+            label = { Text("Accs.") }
         )
     }
 }

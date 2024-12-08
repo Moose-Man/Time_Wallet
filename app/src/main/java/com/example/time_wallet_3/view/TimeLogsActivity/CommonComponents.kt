@@ -73,16 +73,6 @@ fun HeaderSection(viewModel: viewmodel, navController: NavHostController) {
                     color = Color.Black // Adjust text color for better readability
                 )
             }
-
-            // Filter Icon
-            IconButton(onClick = { /* Add action for filtering */ }) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Settings",
-                    modifier = Modifier.size(24.dp),
-                    tint = Color.White // Adjust icon color for better contrast
-                )
-            }
         }
     }
 }
