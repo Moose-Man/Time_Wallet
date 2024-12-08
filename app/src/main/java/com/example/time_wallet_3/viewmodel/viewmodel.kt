@@ -1,6 +1,7 @@
 package com.example.time_wallet_3.viewmodel
 
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -40,6 +41,12 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
     val totalPoints: Flow<Int> = dao.getTotalPoints() // Fetch total points from the database
     private val _bankGoals = MutableStateFlow<List<BankGoal>>(emptyList())
     val bankGoals: StateFlow<List<BankGoal>> = _bankGoals
+    private val _selectedActivity = MutableStateFlow<String?>(null)
+    val selectedActivity: StateFlow<String?> get() = _selectedActivity
+
+    fun setSelectedActivity(activityName: String) {
+        _selectedActivity.value = activityName
+    }
 
     init {
         viewModelScope.launch {
@@ -61,6 +68,48 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
             dao.getAllLogs().collect { fetchedLogs ->
                 _logs.value = fetchedLogs
             }
+        }
+    }
+
+    fun updateBankGoalProgress(activityName: String, timeElapsed: Long) {
+        val timeInMinutes = (timeElapsed / (1000 * 60)).toInt()
+        var bonusPoints = 0
+
+        _bankGoals.value = _bankGoals.value.map { goal ->
+            if (goal.activityName == activityName) {
+                val newProgress = goal.currentProgress + timeInMinutes
+                val completed = newProgress >= goal.timeGoalMinutes
+
+                // Calculate bonus points only if the goal is newly completed
+                if (completed && !goal.completed) {
+                    bonusPoints = 50 // Add bonus points for completing the goal
+                }
+
+                goal.copy(currentProgress = newProgress, completed = completed)
+            } else {
+                goal
+            }
+        }
+
+        // Apply bonus points separately to avoid state race conditions
+        if (bonusPoints > 0) {
+            increasePoints(activityName, bonusPoints = bonusPoints)
+        }
+
+        // Regular points for time spent
+        increasePoints(activityName, timeElapsed)
+    }
+
+    fun increasePoints(activityName: String, timeElapsed: Long = 0, isBonus: Boolean = false, bonusPoints: Int = 0) {
+        viewModelScope.launch {
+            val pointsEarned = if (isBonus) {
+                calculatePoints(0, isBonus = true)
+            } else {
+                calculatePoints(timeElapsed)
+            }
+
+            _totalPoints.value += pointsEarned // Ensure this is executed correctly
+            Log.d("TAG", "Total Points Updated: ${_totalPoints.value}")
         }
     }
 
@@ -87,10 +136,17 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
     fun stopTimer() {
         if (isTimerRunning.value) {
             isTimerRunning.value = false
-            timerJob?.cancel() // Cancel the timer coroutine
-            timeElapsed.value = (System.currentTimeMillis() - startTime) / 1000
+            timerJob?.cancel()
+
+            val elapsedTime = (System.currentTimeMillis() - startTime)
+            timeElapsed.value = elapsedTime / 1000
+
+            selectedActivity.value?.let { activityName ->
+                updateBankGoalProgress(activityName, elapsedTime)
+            }
         }
     }
+
 
     fun resetBudgetsIfNeeded() {
         val now = System.currentTimeMillis()
@@ -174,20 +230,25 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
     @RequiresApi(Build.VERSION_CODES.O)
     fun addLog(activity: String, note: String) {
         val currentDate = getCurrentDate().format(formatter)
+        val elapsedTime = timeElapsed.value * 1000 // Convert seconds to milliseconds
         val newLog = TimeLog(
             elapsedTime = timeElapsed.value,
             activity = activity,
-            points = calculatePoints(timeElapsed.value), // Points calculation during log creation
+            points = calculatePoints(timeElapsed.value),
             date = currentDate,
             notes = note,
             timeStarted = startTime,
             timeStopped = System.currentTimeMillis()
         )
+
         viewModelScope.launch {
-            dao.insertLog(newLog) // Persist points with the log
+            dao.insertLog(newLog)
+            updateBankGoalProgress(activity, elapsedTime) // Update bank goal progress here
         }
+
         resetTimerState()
     }
+
 
     /**
      * Resets the timer state.
@@ -199,11 +260,11 @@ class viewmodel(private val dao: TimeLogDao, private val ActivityDao: ActivityDa
         timerJob?.cancel()
     }
 
-    /**
-     * Example points calculation logic.
-     */
-    private fun calculatePoints(elapsedTime: Long): Int {
-        return (elapsedTime / 60).toInt() // 1 point per minute
+    private fun calculatePoints(elapsedTime: Long, isBonus: Boolean = false): Int {
+        val basePoints = (elapsedTime / 60).toInt() // 1 point per minute
+        val bonusPoints = if (isBonus) 50 else 0
+        Log.d("TAG", "Debug message: Bonus Points Earned = $bonusPoints")
+        return basePoints + bonusPoints
     }
 
     fun addBudget(activityName: String, timeLimitMinutes: Int, period: String) {

@@ -44,11 +44,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.navigation.NavHostController
 import com.example.time_wallet_3.model.Activity
 import com.example.time_wallet_3.model.BankGoal
+import com.example.time_wallet_3.view.TimeLogsActivity.HeaderSection
 
 @Composable
-fun BankScreen(viewModel: viewmodel) {
+fun BankScreen(viewModel: viewmodel, navController: NavHostController) {
     val bankGoals by viewModel.bankGoals.collectAsState(initial = emptyList())
     val activities by viewModel.activities.collectAsState(initial = emptyList())
     val showAddBankGoalDialog = remember { mutableStateOf(false) }
@@ -68,19 +70,23 @@ fun BankScreen(viewModel: viewmodel) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp)
             ) {
-                Text("Bank Goals", style = MaterialTheme.typography.headlineSmall)
+                // Header Section
+                HeaderSection(viewModel, navController)
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                LazyColumn(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp)
+                        .padding(16.dp) // Optional padding for content below the header
                 ) {
-                    items(bankGoals) { bankGoal ->
-                        BankGoalItem(bankGoal = bankGoal, viewModel = viewModel, activities = activities)
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                    ) {
+                        items(bankGoals) { bankGoal ->
+                            BankGoalItem(bankGoal = bankGoal, viewModel = viewModel, activities = activities)
+                        }
                     }
                 }
             }
@@ -88,6 +94,7 @@ fun BankScreen(viewModel: viewmodel) {
             if (showAddBankGoalDialog.value) {
                 AddBankGoalDialog(
                     activities = activities,
+                    existingGoals = bankGoals.map { it.activityName }, // Pass existing bank goals
                     onConfirm = { activityName, timeGoalMinutes, period ->
                         viewModel.addBankGoal(activityName, timeGoalMinutes, period)
                         showAddBankGoalDialog.value = false
@@ -99,154 +106,12 @@ fun BankScreen(viewModel: viewmodel) {
     }
 }
 
-//@Composable
-//fun AddBankGoalDialog(
-//    activities: List<Activity>,
-//    onConfirm: (String, Int, String) -> Unit,
-//    onDismiss: () -> Unit
-//) {
-//    val isActivityDropDownExpanded = remember { mutableStateOf(false) }
-//    val timeGoalHours = remember { mutableStateOf("") }
-//    val timeGoalMinutes = remember { mutableStateOf("") }
-//    val periods = listOf("Daily", "Weekly", "Monthly")
-//    val selectedPeriod = remember { mutableStateOf(periods.first()) }
-//    val isPeriodDropDownExpanded = remember { mutableStateOf(false) }
-//    val selectedActivity = remember { mutableStateOf("") }
-//
-//    AlertDialog(
-//        onDismissRequest = { onDismiss() },
-//        title = { Text("Add New Time Goal") },
-//        text = {
-//            Column {
-//                // Activity Dropdown
-//                Box {
-//                    Text(
-//                        text = if (selectedActivity.value.isNotEmpty()) selectedActivity.value else "Select Activity",
-//                        modifier = Modifier
-//                            .fillMaxWidth()
-//                            .padding(8.dp)
-//                            .clickable { isActivityDropDownExpanded.value = true }
-//                            .background(Color.LightGray)
-//                            .padding(8.dp)
-//                    )
-//                    DropdownMenu(
-//                        expanded = isActivityDropDownExpanded.value,
-//                        onDismissRequest = { isActivityDropDownExpanded.value = false }
-//                    ) {
-//                        activities.forEach { activity ->
-//                            DropdownMenuItem(
-//                                text = { Text(activity.name) },
-//                                onClick = {
-//                                    selectedActivity.value = activity.name
-//                                    isActivityDropDownExpanded.value = false
-//                                }
-//                            )
-//                        }
-//                    }
-//                }
-//
-//                Spacer(modifier = Modifier.height(16.dp))
-//
-//                // Time Goal Hours TextField
-//                OutlinedTextField(
-//                    value = timeGoalHours.value,
-//                    onValueChange = { timeGoalHours.value = it.filter { char -> char.isDigit() } },
-//                    label = { Text("Hours") },
-//                    modifier = Modifier.fillMaxWidth(),
-//                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-//                )
-//
-//                Spacer(modifier = Modifier.height(8.dp))
-//
-//                // Time Goal Minutes TextField
-//                OutlinedTextField(
-//                    value = timeGoalMinutes.value,
-//                    onValueChange = { timeGoalMinutes.value = it.filter { char -> char.isDigit() } },
-//                    label = { Text("Minutes") },
-//                    modifier = Modifier.fillMaxWidth(),
-//                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-//                )
-//
-//                Spacer(modifier = Modifier.height(16.dp))
-//
-//                // Period Dropdown
-//                Box {
-//                    Text(
-//                        text = selectedPeriod.value,
-//                        modifier = Modifier
-//                            .fillMaxWidth()
-//                            .padding(8.dp)
-//                            .clickable { isPeriodDropDownExpanded.value = true }
-//                            .background(Color.LightGray)
-//                            .padding(8.dp)
-//                    )
-//                    DropdownMenu(
-//                        expanded = isPeriodDropDownExpanded.value,
-//                        onDismissRequest = { isPeriodDropDownExpanded.value = false }
-//                    ) {
-//                        periods.forEach { period ->
-//                            DropdownMenuItem(
-//                                text = { Text(period) },
-//                                onClick = {
-//                                    selectedPeriod.value = period
-//                                    isPeriodDropDownExpanded.value = false
-//                                }
-//                            )
-//                        }
-//                    }
-//                }
-//            }
-//        },
-//        confirmButton = {
-//            Button(onClick = {
-//                if (selectedActivity.value.isNotEmpty() && timeGoalHours.value.isNotEmpty()) {
-//                    val totalMinutes = (timeGoalHours.value.toIntOrNull() ?: 0) * 60 +
-//                            (timeGoalMinutes.value.toIntOrNull() ?: 0)
-//                    onConfirm(selectedActivity.value, totalMinutes, selectedPeriod.value)
-//                }
-//            }) {
-//                Text("Add")
-//            }
-//        },
-//        dismissButton = {
-//            Button(onClick = onDismiss) {
-//                Text("Cancel")
-//            }
-//        }
-//    )
-//}
-//
-//
-//@Composable
-//fun BankGoalItem(bankGoal: BankGoal, viewModel: viewmodel, activities: List<Activity>) {
-//    val timeElapsed = viewModel.getElapsedTimeForActivity(bankGoal.activityName, bankGoal.lastResetTime)
-//    val progress = timeElapsed / (bankGoal.timeGoalMinutes * 60f * 1000f)
-//    val progressText = viewModel.formatElapsedTime(timeElapsed, bankGoal.timeGoalMinutes)
-//
-//    Card(
-//        modifier = Modifier.padding(8.dp),
-//        elevation = CardDefaults.cardElevation(4.dp),
-//        shape = RoundedCornerShape(8.dp)
-//    ) {
-//        Column(
-//            modifier = Modifier.padding(16.dp),
-//            verticalArrangement = Arrangement.spacedBy(8.dp)
-//        ) {
-//            Text(text = bankGoal.activityName, style = MaterialTheme.typography.bodyLarge)
-//            LinearProgressIndicator(
-//                progress = { progress.coerceIn(0f, 1f) },
-//                modifier = Modifier.fillMaxWidth(),
-//            )
-//            Text(text = progressText, style = MaterialTheme.typography.bodySmall)
-//        }
-//    }
-//}
-
 @Composable
 fun AddBankGoalDialog(
     activities: List<Activity>,
     onConfirm: (String, Int, String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    existingGoals: List<String> // Pass a list of activities with existing bank goals
 ) {
     val isActivityDropDownExpanded = remember { mutableStateOf(false) }
     val timeGoalHours = remember { mutableStateOf("") }
@@ -255,6 +120,7 @@ fun AddBankGoalDialog(
     val selectedPeriod = remember { mutableStateOf(periods.first()) }
     val isPeriodDropDownExpanded = remember { mutableStateOf(false) }
     val selectedActivity = remember { mutableStateOf("") }
+    val errorMessage = remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = { onDismiss() },
@@ -282,6 +148,7 @@ fun AddBankGoalDialog(
                                 onClick = {
                                     selectedActivity.value = activity.name
                                     isActivityDropDownExpanded.value = false
+                                    errorMessage.value = null // Clear error if valid activity is selected
                                 }
                             )
                         }
@@ -289,6 +156,15 @@ fun AddBankGoalDialog(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
+
+                // Error message for duplicate activity
+                errorMessage.value?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
 
                 // Time Goal Hours TextField
                 OutlinedTextField(
@@ -342,7 +218,13 @@ fun AddBankGoalDialog(
         },
         confirmButton = {
             Button(onClick = {
-                if (selectedActivity.value.isNotEmpty() && timeGoalHours.value.isNotEmpty()) {
+                if (selectedActivity.value.isEmpty()) {
+                    errorMessage.value = "Please select an activity."
+                } else if (existingGoals.contains(selectedActivity.value)) {
+                    errorMessage.value = "A bank goal for this activity already exists."
+                } else if (timeGoalHours.value.isEmpty()) {
+                    errorMessage.value = "Please specify the hours."
+                } else {
                     val totalMinutes = (timeGoalHours.value.toIntOrNull() ?: 0) * 60 +
                             (timeGoalMinutes.value.toIntOrNull() ?: 0)
                     onConfirm(selectedActivity.value, totalMinutes, selectedPeriod.value)
@@ -358,6 +240,7 @@ fun AddBankGoalDialog(
         }
     )
 }
+
 
 
 @Composable

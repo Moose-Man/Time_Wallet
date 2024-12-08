@@ -45,12 +45,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.navigation.NavHostController
 import com.example.time_wallet_3.model.Activity
+import com.example.time_wallet_3.view.TimeLogsActivity.HeaderSection
 
 
 @Composable
-fun BudgetScreen(viewModel: viewmodel) {
-    val budgets by viewModel.budgets.collectAsState(initial = emptyList()) // Live data of budgetsDaily
+fun BudgetScreen(viewModel: viewmodel, navController: NavHostController) {
+    val budgets by viewModel.budgets.collectAsState(initial = emptyList()) // Live data of budgets
     val activities by viewModel.activities.collectAsState(initial = emptyList()) // List of activities
     val showAddBudgetDialog = remember { mutableStateOf(false) } // Track dialog visibility
 
@@ -67,19 +69,24 @@ fun BudgetScreen(viewModel: viewmodel) {
                 .padding(innerPadding)
         ) {
             Column(
-                modifier = Modifier.fillMaxSize().padding(16.dp)
+                modifier = Modifier.fillMaxSize()
             ) {
-                Text("Budgets", style = MaterialTheme.typography.headlineSmall)
+                // Header section
+                HeaderSection(viewModel, navController)
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                LazyColumn(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp)
+                        .padding(16.dp) // Optional padding for content below the header
                 ) {
-                    items(budgets) { budget ->
-                        BudgetItem(budget = budget, viewModel = viewModel, activities = activities)
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                    ) {
+                        items(budgets) { budget ->
+                            BudgetItem(budget = budget, viewModel = viewModel, activities = activities)
+                        }
                     }
                 }
             }
@@ -87,6 +94,7 @@ fun BudgetScreen(viewModel: viewmodel) {
             if (showAddBudgetDialog.value) {
                 AddBudgetDialog(
                     activities = activities,
+                    existingBudgets = budgets.map { it.activityName }, // Pass existing budget activities
                     onConfirm = { activityName, timeLimit, period ->
                         viewModel.addBudget(activityName, timeLimit, period) // Pass all parameters
                         showAddBudgetDialog.value = false
@@ -101,6 +109,7 @@ fun BudgetScreen(viewModel: viewmodel) {
 @Composable
 fun AddBudgetDialog(
     activities: List<Activity>,
+    existingBudgets: List<String>, // Pass existing budget activities
     onConfirm: (String, Int, String) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -111,6 +120,7 @@ fun AddBudgetDialog(
     val selectedPeriod = remember { mutableStateOf(periods.first()) }
     val isPeriodDropDownExpanded = remember { mutableStateOf(false) }
     val selectedActivity = remember { mutableStateOf("") }
+    val errorMessage = remember { mutableStateOf<String?>(null) } // Track error message
 
     AlertDialog(
         onDismissRequest = { onDismiss() },
@@ -138,6 +148,7 @@ fun AddBudgetDialog(
                                 onClick = {
                                     selectedActivity.value = activity.name
                                     isActivityDropDownExpanded.value = false
+                                    errorMessage.value = null // Clear error if valid activity is selected
                                 }
                             )
                         }
@@ -145,6 +156,15 @@ fun AddBudgetDialog(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
+
+                // Error message for duplicate activity
+                errorMessage.value?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
 
                 // Time Limit Hours TextField
                 OutlinedTextField(
@@ -198,7 +218,13 @@ fun AddBudgetDialog(
         },
         confirmButton = {
             Button(onClick = {
-                if (selectedActivity.value.isNotEmpty() && timeLimitHours.value.isNotEmpty()) {
+                if (selectedActivity.value.isEmpty()) {
+                    errorMessage.value = "Please select an activity."
+                } else if (existingBudgets.contains(selectedActivity.value)) {
+                    errorMessage.value = "A budget for this activity already exists."
+                } else if (timeLimitHours.value.isEmpty()) {
+                    errorMessage.value = "Please specify the hours."
+                } else {
                     val totalMinutes = (timeLimitHours.value.toIntOrNull() ?: 0) * 60 +
                             (timeLimitMinutes.value.toIntOrNull() ?: 0)
                     onConfirm(selectedActivity.value, totalMinutes, selectedPeriod.value)
@@ -214,7 +240,6 @@ fun AddBudgetDialog(
         }
     )
 }
-
 
 @Composable
 fun BudgetItem(budget: Budget, viewModel: viewmodel, activities: List<Activity>) {

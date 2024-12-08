@@ -2,8 +2,10 @@ package com.example.time_wallet_3.view.TimeLogsActivity
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -34,38 +37,56 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun HeaderSection(viewModel: viewmodel) {
+fun HeaderSection(viewModel: viewmodel, navController: NavHostController) {
     val totalPoints = viewModel.totalPoints.collectAsState(initial = 0)
 
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp), // Padding around the header
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .background(Color.Blue) // Set blue background color
+            .padding(16.dp) // Padding inside the box
     ) {
-        // Points Badge
-        Card(
-            shape = RoundedCornerShape(50),
-            modifier = Modifier.wrapContentSize()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "${totalPoints.value} points", // Replace with dynamic value if needed
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-        }
+            // Badge Icon
+            IconButton(onClick = { navController.navigate("achievements") }) {
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = "Achievements",
+                    modifier = Modifier.size(32.dp),
+                    tint = Color.White // Adjust icon color for better contrast
+                )
+            }
 
-        // Filter Icon
-        IconButton(onClick = { /* Add action for filtering */ }) {
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = "Settings",
-                modifier = Modifier.size(24.dp)
-            )
+            // Points Badge
+            Card(
+                shape = RoundedCornerShape(50),
+                modifier = Modifier.wrapContentSize()
+            ) {
+                Text(
+                    text = "${totalPoints.value} points",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    color = Color.Black // Adjust text color for better readability
+                )
+            }
+
+            // Filter Icon
+            IconButton(onClick = { /* Add action for filtering */ }) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Settings",
+                    modifier = Modifier.size(24.dp),
+                    tint = Color.White // Adjust icon color for better contrast
+                )
+            }
         }
     }
 }
+
 
 
 @RequiresApi(Build.VERSION_CODES.O)

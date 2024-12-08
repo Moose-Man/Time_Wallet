@@ -54,11 +54,10 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel) {
     val newActivity = remember { mutableStateOf("") }
     val timeElapsed by viewModel.timeElapsed.collectAsState()
     val isTimerRunning by viewModel.isTimerRunning.collectAsState()
-    val selectedActivity = remember { mutableStateOf("") }
+    val selectedActivity by viewModel.selectedActivity.collectAsState() // Observe selected activity
     val showAddActivityDialog = remember { mutableStateOf(false) }
+    val activities by viewModel.activities.collectAsState(initial = emptyList())
     val showDeleteDialog = remember { mutableStateOf(false) }
-    // Fetch activities from the database
-    val activities by viewModel.activities.collectAsState(initial = emptyList()) // Observes database changes
 
     Box(
         modifier = Modifier
@@ -68,14 +67,12 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Title
             Text(
-                text = "Log Time", // Title text
-                style = MaterialTheme.typography.headlineSmall, // Use an appropriate style
-                modifier = Modifier.padding(bottom = 16.dp) // Add spacing below the title
+                text = "Log Time",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            // Notes TextField
             TextField(
                 value = note.value,
                 onValueChange = { note.value = it },
@@ -83,43 +80,34 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel) {
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Custom Date Field
-            TextField(
-                value = customDate.value,
-                onValueChange = { customDate.value = it },
-                label = { Text("Custom Date (yyyy-MM-dd)") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Elapsed time display
             Text(
                 text = "Elapsed Time: ${formatElapsedTime(timeElapsed)}",
                 style = MaterialTheme.typography.bodyLarge
             )
 
-            // Start and Stop Timer Buttons
             Spacer(modifier = Modifier.height(16.dp))
+
             Row {
+                // Start Timer Button
                 Button(
                     onClick = { viewModel.startTimer() },
-                    enabled = !isTimerRunning
+                    enabled = selectedActivity?.isNotEmpty() == true && !isTimerRunning // Enabled only if an activity is selected
                 ) {
                     Text("Start Timer")
                 }
+
                 Spacer(modifier = Modifier.width(16.dp))
 
+                // Stop Timer Button
                 Button(
                     onClick = {
                         viewModel.stopTimer()
                         if (customDate.value.isNotEmpty()) {
                             viewModel.setSimulatedDate(customDate.value)
                         }
-                        viewModel.addLog(selectedActivity.value, note.value) // Use selected activity
-                        viewModel.updateBudgetProgress(selectedActivity.value, timeElapsed)
+                        viewModel.addLog(selectedActivity ?: "", note.value)
                         navController.navigate("view_logs")
                     },
                     enabled = isTimerRunning
@@ -130,17 +118,15 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Activity Grid Header
             Text("Select Activity:", style = MaterialTheme.typography.bodyMedium)
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // LazyVerticalGrid for Activities
             LazyVerticalGrid(
-                columns = GridCells.Fixed(3), // Number of columns
+                columns = GridCells.Fixed(3),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f), // Ensure the grid takes remaining space
+                    .weight(1f),
                 contentPadding = PaddingValues(8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -149,10 +135,12 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel) {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { selectedActivity.value = activity.name },
+                            .clickable {
+                                viewModel.setSelectedActivity(activity.name)
+                            },
                         shape = RoundedCornerShape(0.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (selectedActivity.value == activity.name) Color.Green else Color.LightGray
+                            containerColor = if (selectedActivity == activity.name) Color.Green else Color.LightGray
                         )
                     ) {
                         Text(
@@ -162,16 +150,13 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel) {
                         )
                     }
                 }
-                // Add Activity Card
                 item {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { showAddActivityDialog.value = true },
                         shape = RoundedCornerShape(8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color.Blue
-                        )
+                        colors = CardDefaults.cardColors(containerColor = Color.Blue)
                     ) {
                         Text(
                             text = "Add Activity",
@@ -182,25 +167,24 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel) {
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Add Activity Dialog
-            if (showAddActivityDialog.value) {
-                AddActivityDialog(
-                    newActivity = newActivity,
-                    onConfirm = {
-                        viewModel.addActivity(newActivity.value.trim())
-                        newActivity.value = ""
-                        showAddActivityDialog.value = false
-                    },
-                    onDismiss = {
-                        showAddActivityDialog.value = false
-                    }
-                )
-            }
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Add Activity Dialog
+        if (showAddActivityDialog.value) {
+            AddActivityDialog(
+                newActivity = newActivity,
+                onConfirm = {
+                    viewModel.addActivity(newActivity.value.trim())
+                    newActivity.value = ""
+                    showAddActivityDialog.value = false
+                },
+                onDismiss = {
+                    showAddActivityDialog.value = false
+                }
+            )
+        }
         // Delete Activity Button positioned in the bottom-right corner
         Button(
             onClick = { showDeleteDialog.value = true },
@@ -224,6 +208,8 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel) {
         }
     }
 }
+
+
 
 // Helper function to format elapsed time
 @SuppressLint("DefaultLocale")

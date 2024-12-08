@@ -51,7 +51,7 @@ fun ViewLogsScreen(navController: NavHostController, viewModel: viewmodel) {
                 .padding(innerPadding) // Adjust for Scaffold's padding
         ) {
             // Header Section
-            HeaderSection(viewModel)
+            HeaderSection(viewModel, navController)
 
             // LazyColumn for Logs
             LazyColumn(

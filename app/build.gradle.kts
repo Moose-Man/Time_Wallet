@@ -81,5 +81,5 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.room.ktx)
-
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 }
