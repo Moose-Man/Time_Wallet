@@ -21,4 +21,7 @@ interface BankGoalDao {
 
     @Delete
     suspend fun deleteBankGoal(bankGoal: BankGoal)
+
+    @Query("SELECT * FROM bank_goals WHERE accountId = :accountId")
+    fun getBankGoalsByAccount(accountId: Int): Flow<List<BankGoal>>
 }

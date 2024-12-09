@@ -107,7 +107,11 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel) {
                         if (customDate.value.isNotEmpty()) {
                             viewModel.setSimulatedDate(customDate.value)
                         }
-                        viewModel.addLog(selectedActivity ?: "", note.value)
+                        viewModel.addLog(
+                            accountId = viewModel.currentAccountId.value ?: 0, // Pass the current account ID or a default value
+                            activity = selectedActivity ?: "",
+                            note = note.value
+                        )
                         navController.navigate("view_logs")
                     },
                     enabled = isTimerRunning

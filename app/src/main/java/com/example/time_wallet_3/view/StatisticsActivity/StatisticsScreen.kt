@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material3.Icon
@@ -30,26 +32,6 @@ import kotlin.random.Random
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.highlight.Highlight
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener
-
-
-fun generateColorForActivity(activity: String): Color {
-    val random = Random(activity.hashCode())
-    return Color(
-        red = random.nextInt(100, 255),
-        green = random.nextInt(100, 255),
-        blue = random.nextInt(100, 255)
-    )
-}
-
-object PieChartUtils {
-    fun isSameDay(date1: Date, date2: Date): Boolean {
-        val calendar1 = Calendar.getInstance().apply { time = date1 }
-        val calendar2 = Calendar.getInstance().apply { time = date2 }
-
-        return calendar1.get(Calendar.YEAR) == calendar2.get(Calendar.YEAR) &&
-                calendar1.get(Calendar.DAY_OF_YEAR) == calendar2.get(Calendar.DAY_OF_YEAR)
-    }
-}
 
 fun formatElapsedTime(timeInMillis: Long): String {
     val totalMinutes = (timeInMillis / 1000 / 60).toInt()
@@ -86,8 +68,9 @@ fun StatisticsScreen(viewModel: viewmodel, navController: NavHostController) {
         "Weekly" -> {
             calendar.set(Calendar.DAY_OF_WEEK, calendar.firstDayOfWeek)
             val startOfWeek = calendar.timeInMillis
-            calendar.add(Calendar.DAY_OF_WEEK, 6)
+            calendar.add(Calendar.DAY_OF_WEEK, 7)
             val endOfWeek = calendar.timeInMillis
+            calendar.add(Calendar.DAY_OF_WEEK, -1)
             startOfWeek..endOfWeek
         }
         "Monthly" -> {
@@ -183,11 +166,13 @@ fun StatisticsScreen(viewModel: viewmodel, navController: NavHostController) {
         )
 
         // Row containing arrows and pie chart
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             // Left arrow (visible only for Daily, Weekly, and Monthly views)
             if (selectedView != "Total") {
                 Icon(
-                    imageVector = Icons.Default.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Previous",
                     modifier = Modifier
                         .size(32.dp)
@@ -205,7 +190,7 @@ fun StatisticsScreen(viewModel: viewmodel, navController: NavHostController) {
             // Pie chart
             AndroidView(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .weight(1f)
                     .height(300.dp),
                 factory = { PieChart(context).apply {
                     data = pieData
@@ -232,7 +217,7 @@ fun StatisticsScreen(viewModel: viewmodel, navController: NavHostController) {
             // Right arrow (visible only if navigating to earlier dates)
             if (selectedView != "Total" && selectedDate.before(today)) {
                 Icon(
-                    imageVector = Icons.Default.ArrowForward,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = "Next",
                     modifier = Modifier
                         .size(32.dp)
@@ -265,6 +250,38 @@ fun StatisticsScreen(viewModel: viewmodel, navController: NavHostController) {
 }
 
 
+fun getStartOfWeek(calendar: Calendar): Long {
+    // Set the calendar to the start of the week (Monday)
+    calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+    calendar.set(Calendar.HOUR_OF_DAY, 0)
+    calendar.set(Calendar.MINUTE, 0)
+    calendar.set(Calendar.SECOND, 0)
+    calendar.set(Calendar.MILLISECOND, 0)
+    return calendar.timeInMillis
+}
+
+fun getEndOfWeek(calendar: Calendar): Long {
+    // Set the calendar to the end of the week (Sunday)
+    calendar.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
+    calendar.set(Calendar.HOUR_OF_DAY, 23)
+    calendar.set(Calendar.MINUTE, 59)
+    calendar.set(Calendar.SECOND, 59)
+    calendar.set(Calendar.MILLISECOND, 999)
+    return calendar.timeInMillis
+}
+
+fun getPreviousWeekRange(): Pair<Long, Long> {
+    val calendar = Calendar.getInstance()
+
+    // Set to the previous week
+    calendar.add(Calendar.WEEK_OF_YEAR, -1)
+
+    // Get the start and end of the previous week
+    val startOfPreviousWeek = getStartOfWeek(calendar)
+    val endOfPreviousWeek = getEndOfWeek(calendar)
+
+    return Pair(startOfPreviousWeek, endOfPreviousWeek)
+}
 
 
 

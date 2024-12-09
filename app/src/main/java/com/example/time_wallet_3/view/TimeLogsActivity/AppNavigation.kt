@@ -9,15 +9,22 @@ import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.example.time_wallet_3.view.AccountActivity.AccountsScreen
 import com.example.time_wallet_3.view.AchievementsActivity.AchievementsScreen
 import com.example.time_wallet_3.view.BankActivity.BankScreen
 import com.example.time_wallet_3.view.BudgetActivity.BudgetScreen
@@ -29,7 +36,7 @@ import com.example.time_wallet_3.viewmodel.viewmodel
 fun AppWithBottomNavigation(navController: NavHostController, sharedViewModel: viewmodel) {
     Scaffold(
         bottomBar = {
-            BottomNavigationBar(navController)
+            BottomNavigationBar(navController, sharedViewModel)
         }
     ) { innerPadding ->
         Box(
@@ -43,7 +50,9 @@ fun AppWithBottomNavigation(navController: NavHostController, sharedViewModel: v
 }
 
 @Composable
-fun BottomNavigationBar(navController: NavHostController) {
+fun BottomNavigationBar(navController: NavHostController, sharedViewModel: viewmodel) {
+    val currentAccountId by sharedViewModel.currentAccountId.collectAsState()
+
     BottomNavigation {
         BottomNavigationItem(
             selected = false, // Update this dynamically based on the current route
@@ -54,23 +63,30 @@ fun BottomNavigationBar(navController: NavHostController) {
         BottomNavigationItem(
             selected = false, // Update this dynamically based on the current route
             onClick = { navController.navigate("budget") },
-            icon = { Icon(Icons.Default.Search, contentDescription = "Budget") },
+            icon = { Icon(Icons.Default.ShoppingCart, contentDescription = "Budget") },
             label = { Text("Budget") }
         )
         BottomNavigationItem(
             selected = false, // Update this dynamically based on the current route
-            onClick = { navController.navigate("bank_goals") },
-            icon = { Icon(Icons.Default.Search, contentDescription = "Bank") },
+            onClick = { navController.navigate("bank_goals/${currentAccountId ?: 0}") }, // Include accountId
+            icon = { Icon(Icons.Default.Done, contentDescription = "Bank") },
             label = { Text("Bank") }
         )
         BottomNavigationItem(
             selected = false, // Update this dynamically based on the current route
             onClick = { navController.navigate("statistics") },
-            icon = { Icon(Icons.Default.Search, contentDescription = "Statistics") },
-            label = { Text("Statistics") }
+            icon = { Icon(Icons.Default.Info, contentDescription = "Statistics") },
+            label = { Text("Stats") }
+        )
+        BottomNavigationItem(
+            selected = false, // Update this dynamically based on the current route
+            onClick = { navController.navigate("accounts") },
+            icon = { Icon(Icons.Default.AccountCircle, contentDescription = "Accounts") },
+            label = { Text("Accs.") }
         )
     }
 }
+
 
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -80,13 +96,27 @@ fun AppNavigation(navController: NavHostController, sharedViewModel: viewmodel) 
         navController = navController,
         startDestination = "view_logs"
     ) {
-        composable("achievements") { AchievementsScreen(viewModel = sharedViewModel, navController) } // Add this line
-        composable("bank_goals") { BankScreen(viewModel = sharedViewModel, navController) }
-        composable("budget") { BudgetScreen(viewModel = sharedViewModel, navController) }
-        composable("view_logs") { ViewLogsScreen(navController, sharedViewModel) }
-        composable("create_log") { CreateLogScreen(navController, sharedViewModel) }
+        composable("achievements") {
+            AchievementsScreen(viewModel = sharedViewModel, navController)
+        }
+        composable("bank_goals/{accountId}") { backStackEntry ->
+            val accountId = backStackEntry.arguments?.getString("accountId")?.toIntOrNull() ?: 0
+            BankScreen(viewModel = sharedViewModel, navController, accountId)
+        }
+        composable("budget") {
+            BudgetScreen(viewModel = sharedViewModel, navController)
+        }
+        composable("view_logs") {
+            ViewLogsScreen(navController, sharedViewModel)
+        }
+        composable("create_log") {
+            CreateLogScreen(navController, sharedViewModel)
+        }
         composable("statistics") {
             StatisticsScreen(viewModel = sharedViewModel, navController)
+        }
+        composable("accounts") {
+            AccountsScreen(viewModel = sharedViewModel, navController)
         }
         composable("log_inspection/{logId}") { backStackEntry ->
             val logId = backStackEntry.arguments?.getString("logId")?.toIntOrNull()
@@ -96,4 +126,5 @@ fun AppNavigation(navController: NavHostController, sharedViewModel: viewmodel) 
         }
     }
 }
+
 

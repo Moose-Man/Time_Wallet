@@ -4,6 +4,7 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.navigation.compose.rememberNavController
 import com.example.time_wallet_3.ui.theme.Time_Wallet_3Theme
@@ -22,9 +23,18 @@ class MainActivity : ComponentActivity() {
         // Use the unified database instance
         val database = DatabaseInstance.getDatabase(application)
         val timeLogDao = database.timeLogDao()
-        val activitiesDao = database.activityDao()
-        val viewModelFactory = ViewModelFactory(timeLogDao, activitiesDao)
+        val activityDao = database.activityDao()
+        val accountDao = database.accountDao()
+
+        // Pass the DAOs into the ViewModelFactory
+        val viewModelFactory = ViewModelFactory(
+            timeLogDao, activityDao, accountDao, database.budgetDao(), database.bankGoalDao()
+        )
+
         val sharedViewModel: viewmodel = ViewModelProvider(this, viewModelFactory)[viewmodel::class.java]
+
+        // Initialize default account using the shared ViewModel
+        sharedViewModel.initializeDefaultAccountIfNeeded()
 
         setContent {
             Time_Wallet_3Theme {
@@ -34,6 +44,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
 
 
 

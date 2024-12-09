@@ -26,4 +26,7 @@ interface TimeLogDao {
 
     @Delete
     suspend fun deleteLog(log: TimeLog)
+
+    @Query("SELECT * FROM user_time_logs WHERE accountId = :accountId")
+    fun getLogsByAccount(accountId: Int): Flow<List<TimeLog>>
 }
