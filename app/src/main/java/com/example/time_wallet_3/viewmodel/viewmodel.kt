@@ -1,7 +1,6 @@
 package com.example.time_wallet_3.viewmodel
 
 import android.os.Build
-import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -15,7 +14,11 @@ import com.example.time_wallet_3.model.Budget
 import com.example.time_wallet_3.model.BudgetDao
 import com.example.time_wallet_3.model.TimeLog
 import com.example.time_wallet_3.model.TimeLogDao
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,15 +35,22 @@ class viewmodel(
     private val activityDao: ActivityDao,
     private val accountDao: AccountDao,
     private val budgetDao: BudgetDao,
-    private val bankGoalDao: BankGoalDao
-    ) : ViewModel() {
+    private val bankGoalDao: BankGoalDao,
+    private val coroutineScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main),
+    private val isTesting: Boolean = false
+) : ViewModel() {
 
-    private val _budgets = MutableStateFlow<List<Budget>>(emptyList())
+    override fun onCleared() {
+        super.onCleared()
+        coroutineScope.cancel() // Cancel the custom scope when ViewModel is cleared
+    }
+
+    val _budgets = MutableStateFlow<List<Budget>>(emptyList())
     val budgets: (accountId: Int) -> Flow<List<Budget>> = { accountId ->
         budgetDao.getBudgetsByAccount(accountId)
     }
 
-    private val _bankGoals = MutableStateFlow<List<BankGoal>>(emptyList())
+    val _bankGoals = MutableStateFlow<List<BankGoal>>(emptyList())
     val bankGoals: (accountId: Int) -> Flow<List<BankGoal>> = { accountId ->
         bankGoalDao.getBankGoalsByAccount(accountId)
     }
@@ -48,11 +58,11 @@ class viewmodel(
     private val _logs = MutableStateFlow<List<TimeLog>>(emptyList())
     val logs: StateFlow<List<TimeLog>> get() = _logs
 
-    private val _totalPoints = MutableStateFlow(0) // Points tracked independently
+    val _totalPoints = MutableStateFlow(0) // Points tracked independently
     val totalPoints: Flow<Int> = dao.getTotalPoints() // Fetch total points from the database
 
     private val _currentAccountId = MutableStateFlow<Int?>(null)
-    val currentAccountId: StateFlow<Int?> get() = _currentAccountId// Expose it as a read-only StateFlow
+    val currentAccountId: StateFlow<Int?> get() = _currentAccountId
 
     private val _selectedActivity = MutableStateFlow<String?>(null)
     val selectedActivity: StateFlow<String?> get() = _selectedActivity
@@ -120,7 +130,7 @@ class viewmodel(
         }
     }
 
-    // Add new account (for demonstration)
+    // Add new account
     fun addAccount(accountName: String) {
         viewModelScope.launch {
             val newAccount = Account(name = accountName)
@@ -164,17 +174,11 @@ class viewmodel(
 
     fun updateBankGoalProgress(activityName: String, timeElapsed: Long) {
         val timeInMinutes = (timeElapsed / (1000 * 60)).toInt()
-        var bonusPoints = 0
 
         _bankGoals.value = _bankGoals.value.map { goal ->
             if (goal.activityName == activityName) {
                 val newProgress = goal.currentProgress + timeInMinutes
                 val completed = newProgress >= goal.timeGoalMinutes
-
-                // Calculate bonus points only if the goal is newly completed
-                if (completed && !goal.completed) {
-                    bonusPoints = 50 // Add bonus points for completing the goal
-                }
 
                 goal.copy(currentProgress = newProgress, completed = completed)
             } else {
@@ -182,25 +186,15 @@ class viewmodel(
             }
         }
 
-        // Apply bonus points separately to avoid state race conditions
-        if (bonusPoints > 0) {
-            increasePoints(activityName, bonusPoints = bonusPoints)
-        }
-
         // Regular points for time spent
-        increasePoints(activityName, timeElapsed)
+        increasePoints(timeElapsed)
     }
 
-    fun increasePoints(activityName: String, timeElapsed: Long = 0, isBonus: Boolean = false, bonusPoints: Int = 0) {
+    fun increasePoints(timeElapsed: Long = 0) {
         viewModelScope.launch {
-            val pointsEarned = if (isBonus) {
-                calculatePoints(0, isBonus = true)
-            } else {
-                calculatePoints(timeElapsed)
-            }
+            val pointsEarned = calculatePoints(timeElapsed)
 
             _totalPoints.value += pointsEarned // Ensure this is executed correctly
-            Log.d("TAG", "Total Points Updated: ${_totalPoints.value}")
         }
     }
 
@@ -272,10 +266,12 @@ class viewmodel(
     }
 
     init {
-        viewModelScope.launch {
-            while (true) {
-                resetBudgetsIfNeeded()
-                delay(1 * 1000L)
+        if (!isTesting) {
+            coroutineScope.launch {
+                while (true) {
+                    resetBudgetsIfNeeded()
+                    delay(1 * 1000L)
+                }
             }
         }
     }
@@ -369,11 +365,9 @@ class viewmodel(
         timerJob?.cancel()
     }
 
-    private fun calculatePoints(elapsedTime: Long, isBonus: Boolean = false): Int {
+    private fun calculatePoints(elapsedTime: Long): Int {
         val basePoints = (elapsedTime / 60).toInt() // 1 point per minute
-        val bonusPoints = if (isBonus) 50 else 0
-        Log.d("TAG", "Debug message: Bonus Points Earned = $bonusPoints")
-        return basePoints + bonusPoints
+        return basePoints
     }
 
     fun addBudget(accountId: Int, activityName: String, timeLimitMinutes: Int, period: String) {

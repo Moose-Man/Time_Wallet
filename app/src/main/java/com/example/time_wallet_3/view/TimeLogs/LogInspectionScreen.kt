@@ -1,4 +1,4 @@
-package com.example.time_wallet_3.view.TimeLogsActivity
+package com.example.time_wallet_3.view.TimeLogs
 
 import android.os.Build
 import androidx.annotation.RequiresApi

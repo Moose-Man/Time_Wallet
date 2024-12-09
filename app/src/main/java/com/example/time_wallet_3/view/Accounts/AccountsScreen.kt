@@ -1,4 +1,4 @@
-package com.example.time_wallet_3.view.AccountActivity
+package com.example.time_wallet_3.view.Accounts
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,8 +29,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.runtime.mutableStateOf
 import androidx.navigation.NavHostController
 import com.example.time_wallet_3.model.Account
-import androidx.compose.material3.TextField
-import androidx.compose.ui.Alignment
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Icon
@@ -47,11 +45,6 @@ fun AccountsScreen(viewModel: viewmodel, navController: NavHostController) {
     val currentAccountId by viewModel.currentAccountId.collectAsState(initial = null)
     val showAddAccountDialog = remember { mutableStateOf(false) }
     val showEditAccountDialog = remember { mutableStateOf<Pair<Boolean, Account?>>(false to null) }
-
-//    // Observe changes in logs, budgets, and bank goals for the current account
-//    val logs by viewModel.logs.collectAsState(initial = emptyList())
-//    val budgets by viewModel.budgets.collectAsState(initial = emptyList())
-//    val bankGoals by viewModel.bankGoals.collectAsState(initial = emptyList())
 
     Scaffold(
         floatingActionButton = {

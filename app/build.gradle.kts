@@ -65,7 +65,10 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.storage)
+    implementation(libs.androidx.ui.test.junit4.android)
     testImplementation(libs.junit)
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.junit.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -82,4 +85,39 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.room.ktx)
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+
+//    testImplementation("junit:junit:4.13.2")
+//    testImplementation("io.mockk:mockk:1.13.2")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1'")
+    testImplementation("org.mockito:mockito-core:3.12.4")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:3.2.0")
+//    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+//    testImplementation("android.arch.core:core-testing:2.1.0")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:1.9.0")
+
+    // Core Testing for ViewModel and LiveData testing
+    testImplementation("androidx.arch.core:core-testing:2.1.0")
+
+    // JUnit for unit testing
+    testImplementation("junit:junit:4.13.2")
+
+    // MockK for mocking
+    testImplementation("io.mockk:mockk:1.13.5")
+    androidTestImplementation("io.mockk:mockk-android:1.13.5")
+
+    // Coroutines testing library
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.1")
+
+    // AndroidX Test - Core and Runner
+    testImplementation("androidx.test:core:1.5.0")
+    testImplementation("androidx.test:runner:1.5.2")
+
+    testImplementation("org.mockito.kotlin:mockito-kotlin:4.1.0")
+    testImplementation("org.mockito:mockito-core:4.5.1")
+
+    debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    androidTestImplementation("androidx.navigation:navigation-testing:2.8.4")
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4:2.8.4")
+
 }

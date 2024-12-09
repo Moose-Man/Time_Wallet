@@ -1,4 +1,4 @@
-package com.example.time_wallet_3.view.BankActivity
+package com.example.time_wallet_3.view.BankGoals
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -47,7 +47,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.navigation.NavHostController
 import com.example.time_wallet_3.model.Activity
 import com.example.time_wallet_3.model.BankGoal
-import com.example.time_wallet_3.view.TimeLogsActivity.HeaderSection
+import com.example.time_wallet_3.view.TimeLogs.HeaderSection
 
 @Composable
 fun BankScreen(viewModel: viewmodel, navController: NavHostController, accountId: Int) {

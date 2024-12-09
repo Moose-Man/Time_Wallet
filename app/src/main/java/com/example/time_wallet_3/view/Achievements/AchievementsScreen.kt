@@ -1,4 +1,4 @@
-package com.example.time_wallet_3.view.AchievementsActivity
+package com.example.time_wallet_3.view.Achievements
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -29,7 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.navigation.NavHostController
 import com.example.time_wallet_3.model.Achievements
-import com.example.time_wallet_3.view.TimeLogsActivity.HeaderSection
+import com.example.time_wallet_3.view.TimeLogs.HeaderSection
 
 @Composable
 fun AchievementsScreen(viewModel: viewmodel, navController: NavHostController) {
@@ -65,7 +65,7 @@ fun AchievementsScreen(viewModel: viewmodel, navController: NavHostController) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 56.dp) // Match the header's height
+                .padding(top = 56.dp)
         ) {
             Column(
                 modifier = Modifier
@@ -81,7 +81,7 @@ fun AchievementsScreen(viewModel: viewmodel, navController: NavHostController) {
 
                 // Achievements grid
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(3), // 3 columns
+                    columns = GridCells.Fixed(3),
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
