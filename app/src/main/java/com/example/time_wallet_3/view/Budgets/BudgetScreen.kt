@@ -1,4 +1,4 @@
-package com.example.time_wallet_3.view.BudgetActivity
+package com.example.time_wallet_3.view.Budgets
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -47,7 +47,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.navigation.NavHostController
 import com.example.time_wallet_3.model.Activity
-import com.example.time_wallet_3.view.TimeLogsActivity.HeaderSection
+import com.example.time_wallet_3.view.TimeLogs.HeaderSection
 
 
 @Composable
@@ -79,7 +79,7 @@ fun BudgetScreen(viewModel: viewmodel, navController: NavHostController) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp) // Optional padding for content below the header
+                        .padding(16.dp)
                 ) {
                     LazyColumn(
                         modifier = Modifier

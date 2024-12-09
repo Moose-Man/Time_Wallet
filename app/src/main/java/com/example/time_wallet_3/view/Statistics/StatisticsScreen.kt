@@ -1,4 +1,4 @@
-package com.example.time_wallet_3.view.StatisticsActivity
+package com.example.time_wallet_3.view.Statistics
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -7,8 +7,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -19,7 +17,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.navigation.NavHostController
 import com.example.time_wallet_3.viewmodel.viewmodel
 import com.github.mikephil.charting.charts.PieChart
 import com.github.mikephil.charting.data.PieData
@@ -28,7 +25,6 @@ import com.github.mikephil.charting.data.PieEntry
 import com.github.mikephil.charting.utils.ColorTemplate
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.random.Random
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.highlight.Highlight
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener
@@ -42,7 +38,7 @@ fun formatElapsedTime(timeInMillis: Long): String {
 }
 
 @Composable
-fun StatisticsScreen(viewModel: viewmodel, navController: NavHostController) {
+fun StatisticsScreen(viewModel: viewmodel) {
     val context = LocalContext.current
     val logs = viewModel.logs.collectAsState().value
     val sdf = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
@@ -107,8 +103,7 @@ fun StatisticsScreen(viewModel: viewmodel, navController: NavHostController) {
 
     // Create PieEntry objects with formatted labels
     val pieEntries = activityTotals.map { (activity, timeInSeconds) ->
-        val timeInMillis = timeInSeconds * 1000L
-        PieEntry(timeInSeconds.toFloat(), activity) // Use only the activity name as the label
+        PieEntry(timeInSeconds.toFloat(), activity)
     }
 
     // Configure the PieDataSet
@@ -250,38 +245,6 @@ fun StatisticsScreen(viewModel: viewmodel, navController: NavHostController) {
 }
 
 
-fun getStartOfWeek(calendar: Calendar): Long {
-    // Set the calendar to the start of the week (Monday)
-    calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-    calendar.set(Calendar.HOUR_OF_DAY, 0)
-    calendar.set(Calendar.MINUTE, 0)
-    calendar.set(Calendar.SECOND, 0)
-    calendar.set(Calendar.MILLISECOND, 0)
-    return calendar.timeInMillis
-}
-
-fun getEndOfWeek(calendar: Calendar): Long {
-    // Set the calendar to the end of the week (Sunday)
-    calendar.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
-    calendar.set(Calendar.HOUR_OF_DAY, 23)
-    calendar.set(Calendar.MINUTE, 59)
-    calendar.set(Calendar.SECOND, 59)
-    calendar.set(Calendar.MILLISECOND, 999)
-    return calendar.timeInMillis
-}
-
-fun getPreviousWeekRange(): Pair<Long, Long> {
-    val calendar = Calendar.getInstance()
-
-    // Set to the previous week
-    calendar.add(Calendar.WEEK_OF_YEAR, -1)
-
-    // Get the start and end of the previous week
-    val startOfPreviousWeek = getStartOfWeek(calendar)
-    val endOfPreviousWeek = getEndOfWeek(calendar)
-
-    return Pair(startOfPreviousWeek, endOfPreviousWeek)
-}
 
 
 

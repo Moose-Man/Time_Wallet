@@ -1,4 +1,4 @@
-package com.example.time_wallet_3.view.TimeLogsActivity
+package com.example.time_wallet_3.view.TimeLogs
 
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -12,7 +12,6 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -24,11 +23,11 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.example.time_wallet_3.view.AccountActivity.AccountsScreen
-import com.example.time_wallet_3.view.AchievementsActivity.AchievementsScreen
-import com.example.time_wallet_3.view.BankActivity.BankScreen
-import com.example.time_wallet_3.view.BudgetActivity.BudgetScreen
-import com.example.time_wallet_3.view.StatisticsActivity.StatisticsScreen
+import com.example.time_wallet_3.view.Accounts.AccountsScreen
+import com.example.time_wallet_3.view.Achievements.AchievementsScreen
+import com.example.time_wallet_3.view.BankGoals.BankScreen
+import com.example.time_wallet_3.view.Budgets.BudgetScreen
+import com.example.time_wallet_3.view.Statistics.StatisticsScreen
 import com.example.time_wallet_3.viewmodel.viewmodel
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -55,31 +54,31 @@ fun BottomNavigationBar(navController: NavHostController, sharedViewModel: viewm
 
     BottomNavigation {
         BottomNavigationItem(
-            selected = false, // Update this dynamically based on the current route
+            selected = false,
             onClick = { navController.navigate("view_logs") },
             icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Logs") },
             label = { Text("Logs") }
         )
         BottomNavigationItem(
-            selected = false, // Update this dynamically based on the current route
+            selected = false,
             onClick = { navController.navigate("budget") },
             icon = { Icon(Icons.Default.ShoppingCart, contentDescription = "Budget") },
             label = { Text("Budget") }
         )
         BottomNavigationItem(
-            selected = false, // Update this dynamically based on the current route
-            onClick = { navController.navigate("bank_goals/${currentAccountId ?: 0}") }, // Include accountId
+            selected = false,
+            onClick = { navController.navigate("bank_goals/${currentAccountId ?: 0}") },
             icon = { Icon(Icons.Default.Done, contentDescription = "Bank") },
             label = { Text("Bank") }
         )
         BottomNavigationItem(
-            selected = false, // Update this dynamically based on the current route
+            selected = false,
             onClick = { navController.navigate("statistics") },
             icon = { Icon(Icons.Default.Info, contentDescription = "Statistics") },
             label = { Text("Stats") }
         )
         BottomNavigationItem(
-            selected = false, // Update this dynamically based on the current route
+            selected = false,
             onClick = { navController.navigate("accounts") },
             icon = { Icon(Icons.Default.AccountCircle, contentDescription = "Accounts") },
             label = { Text("Accs.") }
@@ -113,7 +112,7 @@ fun AppNavigation(navController: NavHostController, sharedViewModel: viewmodel) 
             CreateLogScreen(navController, sharedViewModel)
         }
         composable("statistics") {
-            StatisticsScreen(viewModel = sharedViewModel, navController)
+            StatisticsScreen(viewModel = sharedViewModel)
         }
         composable("accounts") {
             AccountsScreen(viewModel = sharedViewModel, navController)

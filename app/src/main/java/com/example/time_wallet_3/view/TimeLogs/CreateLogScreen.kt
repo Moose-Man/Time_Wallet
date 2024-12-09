@@ -1,4 +1,4 @@
-package com.example.time_wallet_3.view.TimeLogsActivity
+package com.example.time_wallet_3.view.TimeLogs
 
 import android.annotation.SuppressLint
 import android.os.Build
@@ -189,6 +189,7 @@ fun CreateLogScreen(navController: NavHostController, viewModel: viewmodel) {
                 }
             )
         }
+
         // Delete Activity Button positioned in the bottom-right corner
         Button(
             onClick = { showDeleteDialog.value = true },

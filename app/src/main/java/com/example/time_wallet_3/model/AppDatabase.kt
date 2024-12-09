@@ -13,7 +13,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun budgetDao(): BudgetDao
     abstract fun bankGoalDao(): BankGoalDao
 }
-val MIGRATION_1_2 = object : Migration(6, 7) {
+val MIGRATION_6_7 = object : Migration(6, 7) {
     override fun migrate(database: SupportSQLiteDatabase) {
         database.execSQL("CREATE TABLE accounts (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name TEXT NOT NULL)")
         database.execSQL("ALTER TABLE budgets ADD COLUMN accountId INTEGER NOT NULL DEFAULT 0 REFERENCES accounts(id) ON DELETE CASCADE")

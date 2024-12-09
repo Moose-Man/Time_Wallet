@@ -7,6 +7,6 @@ import androidx.room.PrimaryKey
 data class Activity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
-    var limit: Int = 0 // New field for weekly limit
+    var limit: Int = 0
 )
 

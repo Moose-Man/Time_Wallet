@@ -1,4 +1,4 @@
-package com.example.time_wallet_3.view.TimeLogsActivity
+package com.example.time_wallet_3.view.TimeLogs
 
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -48,7 +48,7 @@ fun ViewLogsScreen(navController: NavHostController, viewModel: viewmodel) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding) // Adjust for Scaffold's padding
+                .padding(innerPadding)
         ) {
             // Header Section
             HeaderSection(viewModel, navController)
@@ -57,7 +57,7 @@ fun ViewLogsScreen(navController: NavHostController, viewModel: viewmodel) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .navigationBarsPadding() // Allow content to slide under the navigation bar
+                    .navigationBarsPadding()
             ) {
                 groupedLogs.forEach { (date, logsForDate) ->
                     item {

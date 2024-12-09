@@ -4,14 +4,13 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.navigation.compose.rememberNavController
 import com.example.time_wallet_3.ui.theme.Time_Wallet_3Theme
 import com.example.time_wallet_3.viewmodel.viewmodel
 import androidx.lifecycle.ViewModelProvider
 import com.example.time_wallet_3.model.DatabaseInstance
-import com.example.time_wallet_3.view.TimeLogsActivity.AppWithBottomNavigation
+import com.example.time_wallet_3.view.TimeLogs.AppWithBottomNavigation
 import com.example.time_wallet_3.viewmodel.ViewModelFactory
 
 

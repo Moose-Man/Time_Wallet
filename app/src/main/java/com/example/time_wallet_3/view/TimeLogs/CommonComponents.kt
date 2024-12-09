@@ -1,4 +1,4 @@
-package com.example.time_wallet_3.view.TimeLogsActivity
+package com.example.time_wallet_3.view.TimeLogs
 
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -43,8 +42,8 @@ fun HeaderSection(viewModel: viewmodel, navController: NavHostController) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.Blue) // Set blue background color
-            .padding(16.dp) // Padding inside the box
+            .background(Color.Blue)
+            .padding(16.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -57,7 +56,7 @@ fun HeaderSection(viewModel: viewmodel, navController: NavHostController) {
                     imageVector = Icons.Default.Star,
                     contentDescription = "Achievements",
                     modifier = Modifier.size(32.dp),
-                    tint = Color.White // Adjust icon color for better contrast
+                    tint = Color.White
                 )
             }
 
@@ -70,7 +69,7 @@ fun HeaderSection(viewModel: viewmodel, navController: NavHostController) {
                     text = "${totalPoints.value} points",
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    color = Color.Black // Adjust text color for better readability
+                    color = Color.Black
                 )
             }
         }
